@@ -17,13 +17,22 @@ def evaluate_docs(docs_dir: Path) -> dict:
 
     Returns evaluation metrics.
     """
-    # Find the docs
-    docs_path = docs_dir / "docs" / "index.md"
+    # Find all markdown files in docs/
+    docs_path = docs_dir / "docs"
     if not docs_path.exists():
-        return {"error": "No docs found"}
+        return {"error": "No docs directory found"}
 
-    # Read the docs content
-    content = docs_path.read_text()
+    md_files = list(docs_path.rglob("*.md"))
+    if not md_files:
+        return {"error": "No markdown files found"}
+
+    # Combine all doc content for evaluation
+    all_content = []
+    for md_file in md_files:
+        all_content.append(md_file.read_text())
+
+    content = "\n\n".join(all_content)
+    file_count = len(md_files)
 
     # Calculate metrics
     fk_grade = calculate_readability(content)
@@ -50,6 +59,7 @@ def evaluate_docs(docs_dir: Path) -> dict:
             "score": structure,
             "heading_count": heading_count,
             "code_block_count": code_block_count // 2,  # Opening and closing
+            "file_count": file_count,
         },
         "size": {
             "word_count": word_count,
@@ -133,6 +143,7 @@ def print_report(results: dict[str, dict]) -> None:
         )
         print(f"    Headings: {structure.get('heading_count', 'N/A')}")
         print(f"    Code blocks: {structure.get('code_block_count', 'N/A')}")
+        print(f"    Files: {structure.get('file_count', 'N/A')}")
 
         # Size
         size = metrics.get("size", {})
