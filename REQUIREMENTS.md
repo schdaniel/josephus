@@ -115,7 +115,56 @@ We generate markdown - users render with their preferred platform:
 - Generate code examples
 - Create architecture diagrams (Mermaid)
 
-### 3.3 PR Documentation Updates (CI/CD)
+### 3.3 Repository Analysis Pipeline
+
+*Pattern adopted from Repomix and DeepWiki-Open*
+
+```
+1. Clone/Fetch Repository
+       ↓
+2. File Filtering (.gitignore → .josephus.yml rules)
+       ↓
+3. Secret Scanning (reject if credentials detected)
+       ↓
+4. Token Counting (estimate LLM context usage)
+       ↓
+5. Code Compression (Tree-sitter for large repos)
+       ↓
+6. Context Assembly (XML structure for Claude)
+       ↓
+7. LLM Processing
+```
+
+**File Filtering Stack:**
+```
+.gitignore          → Respect existing ignores
+.josephus.yml       → Project-specific overrides
+Default excludes    → node_modules, .git, binaries, etc.
+```
+
+**Security Scanning:**
+- Integrate secret detection before LLM processing
+- Block generation if credentials/tokens found
+- Warn user with specific file locations
+
+**Token Management:**
+- Count tokens per file and total before sending
+- Prioritize important files when context limited
+- Use Tree-sitter compression for large codebases (extract signatures, skip implementations)
+
+**Context Format (XML for Claude):**
+```xml
+<repository name="project">
+  <file_summary>Overview of repo structure...</file_summary>
+  <directory_structure>src/, docs/, tests/...</directory_structure>
+  <files>
+    <file path="src/api.ts">...content...</file>
+  </files>
+  <guidelines>User's natural language config...</guidelines>
+</repository>
+```
+
+### 3.4 PR Documentation Updates (CI/CD)
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -269,15 +318,16 @@ style:
 
 | Component | Technology | Rationale |
 |-----------|------------|-----------|
-| **Backend API** | Python (FastAPI) | Strong AI/ML ecosystem, async support |
+| **Backend API** | Python (FastAPI) | Strong AI/ML ecosystem, async native |
 | **Frontend** | Next.js + TypeScript | Modern React, SSR, great DX |
 | **Database** | PostgreSQL | Reliable, JSON support, full-text search |
-| **Vector Store** | pgvector or Pinecone | RAG for codebase understanding |
-| **Queue** | Redis + BullMQ | Job processing for doc generation |
-| **LLM Provider** | Multi-provider | Claude, GPT-4, Gemini (configurable) |
+| **Vector Store** | pgvector | Simpler ops (no separate service), proven |
+| **Queue** | Celery + Redis | Mature Python job processing, scalable |
+| **Code Parsing** | Tree-sitter | Language-aware AST extraction |
+| **LLM Provider** | Config-driven multi-provider | Claude (primary), OpenAI, Ollama fallback |
 | **Output Format** | Markdown + frontmatter | Platform-agnostic, universal |
 | **Doc Storage** | Git (user's repo) | Docs as code, no vendor lock-in |
-| **API Hosting** | Vercel/Railway | Easy deployment, scalable |
+| **API Hosting** | Railway / Render | Easy deployment, Docker support |
 
 ### 5.2 GitHub Integration (App Only)
 
@@ -293,6 +343,26 @@ Single GitHub App handles everything: user authentication, repo access, and webh
 - `pull_request` - opened, synchronize, closed
 - `push` - to main/master (for doc site rebuilds)
 - `installation` - app installed/uninstalled
+
+**Webhook Security (Critical):**
+```python
+# HMAC signature verification - MUST implement
+def verify_signature(payload: bytes, signature: str, secret: str) -> bool:
+    expected = "sha256=" + hmac.new(secret.encode(), payload, hashlib.sha256).hexdigest()
+    return hmac.compare_digest(expected, signature)
+```
+
+**Token Management:**
+- Generate short-lived installation tokens per request
+- Never store long-lived tokens
+- Tokens scoped to specific installation
+
+**Webhook Processing Pattern:**
+```
+Webhook received → Verify signature → Queue job → Return 200 immediately
+                                          ↓
+                              Worker processes async (Celery)
+```
 
 **Why App-only (no separate OAuth):**
 - Single installation flow for users
@@ -315,16 +385,64 @@ Single GitHub App handles everything: user authentication, repo access, and webh
 - Consistent output formatting
 - Cost efficiency for high-volume PR analysis
 
-**Recommended:** Claude 3.5 Sonnet for generation, Claude Haiku for classification
+**Recommended models:**
+- **Generation:** Claude 3.5 Sonnet (quality) or Claude Haiku (speed/cost)
+- **Classification:** Claude Haiku (fast, cheap for PR triage)
+- **Embeddings:** OpenAI text-embedding-3-small or local alternative
+
+**Config-Driven Provider Pattern:**
+```yaml
+# config/llm_providers.yml
+providers:
+  claude:
+    api_key_env: ANTHROPIC_API_KEY
+    models:
+      generation: claude-3-5-sonnet-20241022
+      classification: claude-3-5-haiku-20241022
+  openai:
+    api_key_env: OPENAI_API_KEY
+    base_url_env: OPENAI_BASE_URL  # For Azure/enterprise
+    models:
+      generation: gpt-4o
+      embeddings: text-embedding-3-small
+  ollama:
+    base_url: http://localhost:11434
+    models:
+      generation: llama3.2
+```
+
+**Environment overrides for enterprise:**
+- `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`
+- `OPENAI_BASE_URL` - Custom endpoint (Azure, proxies)
+- `LLM_PROVIDER` - Override default provider
 
 ### 5.4 Security Requirements
 
+**Webhook Security:**
+- [ ] HMAC signature verification on all webhooks (critical)
+- [ ] Reject requests with invalid/missing signatures
+- [ ] Use timing-safe comparison (`hmac.compare_digest`)
+
+**Code Handling:**
+- [ ] No persistent storage of source code
+- [ ] Process in memory, discard after generation
+- [ ] Secret scanning before LLM processing (block if found)
+- [ ] Never send detected credentials to LLM
+
+**Token Security:**
 - [ ] GitHub App tokens encrypted at rest
-- [ ] No storage of source code (process in memory, discard)
-- [ ] Audit logging for all actions
-- [ ] SOC 2 compliance path (if B2B SaaS)
-- [ ] Private repo support with explicit permissions
+- [ ] Short-lived installation tokens only
+- [ ] API keys in environment variables, not config files
+
+**Infrastructure:**
+- [ ] Stateless webhook handlers (horizontal scaling)
 - [ ] Rate limiting on API and LLM calls
+- [ ] Audit logging for all actions
+- [ ] Private repo support with explicit permissions
+
+**Compliance (Phase 4):**
+- [ ] SOC 2 compliance path (if B2B SaaS)
+- [ ] Data residency options for enterprise
 
 ---
 
@@ -423,9 +541,10 @@ Screen 6: Commit to Repo
 
 ### Technical Questions
 1. ~~**Docusaurus vs custom?**~~ **DECIDED:** Neither - output platform-agnostic markdown
-2. **Vector DB choice?** pgvector (simpler) vs Pinecone (managed)?
+2. ~~**Vector DB choice?**~~ **DECIDED:** pgvector (simpler ops, no separate service)
 3. ~~**Doc storage?**~~ **DECIDED:** Git-based - docs committed to user's repo
-4. **Real-time vs batch?** Generate on-demand or pre-compute?
+4. ~~**Job queue?**~~ **DECIDED:** Celery + Redis (mature Python ecosystem)
+5. **Real-time vs batch?** Generate on-demand or pre-compute?
 
 ### Scope Questions
 1. **API docs focus?** Should we specialize in API documentation first?
@@ -469,13 +588,20 @@ Screen 6: Commit to Repo
 
 ## Next Steps
 
-1. [ ] Review and refine these requirements
-2. [ ] Make decisions on open questions
-3. [ ] Create technical design document
-4. [ ] Set up project structure and CI
-5. [ ] Begin Phase 1 implementation
+1. [x] Review and refine these requirements
+2. [x] Research architecture patterns (see `ARCHITECTURE_PATTERNS.md`)
+3. [ ] Make decisions on remaining open questions
+4. [ ] Create GitHub repository
+5. [ ] Set up project structure and CI
+6. [ ] Begin Phase 1 implementation
 
 ---
 
-*Document version: 0.4*
+## Related Documents
+
+- [`ARCHITECTURE_PATTERNS.md`](./ARCHITECTURE_PATTERNS.md) - Patterns extracted from Repomix, DeepWiki-Open, Probot
+
+---
+
+*Document version: 0.5*
 *Last updated: 2026-02-05*
