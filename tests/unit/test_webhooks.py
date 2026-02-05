@@ -15,7 +15,7 @@ class TestWebhookSignatureVerification:
         secret = "test-secret"
 
         # Compute valid signature
-        expected = (
+        signature = (
             "sha256="
             + hmac.new(
                 secret.encode("utf-8"),
@@ -24,7 +24,7 @@ class TestWebhookSignatureVerification:
             ).hexdigest()
         )
 
-        assert verify_webhook_signature(payload, expected, secret) is True
+        assert verify_webhook_signature(payload, signature, secret) is True
 
     def test_invalid_signature(self) -> None:
         """Test that invalid signatures are rejected."""
