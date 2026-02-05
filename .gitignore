@@ -82,5 +82,9 @@ Thumbs.db
 # Project specific
 *.pem
 .env.local
+
+# Eval data (large repos stored locally, not in git)
 eval/repos/*
 !eval/repos/.gitkeep
+eval/ground_truth/*
+!eval/ground_truth/.gitkeep

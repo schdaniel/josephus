@@ -1,0 +1,9 @@
+{
+  "_comment": "Ground truth labels for PR detection evaluation. Format: repo_name -> scenario_id -> should_update_docs",
+  "example-repo": {
+    "add-api-endpoint": true,
+    "refactor-internal": false,
+    "fix-typo-tests": false,
+    "new-feature": true
+  }
+}
