@@ -26,6 +26,7 @@ def build_generation_prompt(
     repo_context: str,
     guidelines: str = "",
     existing_docs: str = "",
+    structure_plan: str = "",
 ) -> str:
     """Build the prompt for documentation generation.
 
@@ -33,6 +34,7 @@ def build_generation_prompt(
         repo_context: XML-formatted repository context
         guidelines: User's documentation guidelines
         existing_docs: Existing documentation to consider
+        structure_plan: Pre-planned documentation structure (from DocStructurePlan.to_prompt_context())
 
     Returns:
         Formatted prompt string
@@ -65,35 +67,65 @@ def build_generation_prompt(
             ]
         )
 
-    parts.extend(
-        [
-            "",
-            "Generate documentation files using file markers. Example format:",
-            "",
-            "<!-- FILE: docs/index.md -->",
-            "# Project Name",
-            "",
-            "Welcome to the project documentation...",
-            "",
-            "<!-- FILE: docs/getting-started.md -->",
-            "# Getting Started",
-            "",
-            "## Installation",
-            "...",
-            "",
-            "<!-- FILE: docs/features/feature-a.md -->",
-            "# Feature A",
-            "...",
-            "",
-            "Requirements:",
-            "- Include at minimum: index.md (overview), getting-started.md (installation & quickstart)",
-            "- Add feature documentation for each major user-facing feature",
-            "- Use clear section headings",
-            "- Include code examples where appropriate",
-            "- Start each file with <!-- FILE: path/to/file.md --> marker",
-            "- Write complete, well-structured documentation for each file",
-        ]
-    )
+    if structure_plan:
+        parts.extend(
+            [
+                "",
+                "<documentation_structure_plan>",
+                structure_plan,
+                "</documentation_structure_plan>",
+                "",
+                "IMPORTANT: Follow the structure plan above. Create exactly the files listed with the specified sections.",
+            ]
+        )
+        parts.extend(
+            [
+                "",
+                "Generate documentation files using file markers. Format:",
+                "",
+                "<!-- FILE: path/to/file.md -->",
+                "# Title",
+                "",
+                "Content...",
+                "",
+                "Requirements:",
+                "- Create ALL files specified in the structure plan",
+                "- Include ALL sections listed for each file",
+                "- Maintain the specified order",
+                "- Start each file with <!-- FILE: path/to/file.md --> marker",
+                "- Write complete, well-structured documentation for each file",
+            ]
+        )
+    else:
+        parts.extend(
+            [
+                "",
+                "Generate documentation files using file markers. Example format:",
+                "",
+                "<!-- FILE: docs/index.md -->",
+                "# Project Name",
+                "",
+                "Welcome to the project documentation...",
+                "",
+                "<!-- FILE: docs/getting-started.md -->",
+                "# Getting Started",
+                "",
+                "## Installation",
+                "...",
+                "",
+                "<!-- FILE: docs/features/feature-a.md -->",
+                "# Feature A",
+                "...",
+                "",
+                "Requirements:",
+                "- Include at minimum: index.md (overview), getting-started.md (installation & quickstart)",
+                "- Add feature documentation for each major user-facing feature",
+                "- Use clear section headings",
+                "- Include code examples where appropriate",
+                "- Start each file with <!-- FILE: path/to/file.md --> marker",
+                "- Write complete, well-structured documentation for each file",
+            ]
+        )
 
     return "\n".join(parts)
 
