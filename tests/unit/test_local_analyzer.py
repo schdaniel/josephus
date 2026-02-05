@@ -60,9 +60,7 @@ class TestLocalRepoAnalyzer:
         # Create a test file (should be lower priority)
         tests_dir = tmp_path / "tests"
         tests_dir.mkdir()
-        (tests_dir / "test_main.py").write_text(
-            'def test_main():\n    assert True\n'
-        )
+        (tests_dir / "test_main.py").write_text("def test_main():\n    assert True\n")
 
         return tmp_path
 
