@@ -1,5 +1,17 @@
 # Claude Code Instructions for Josephus
 
+## Session Startup (DO THIS FIRST)
+
+At the beginning of every new Claude session:
+
+1. **Read this file** - You're already doing this if you see this instruction
+2. **Read REQUIREMENTS.md** - Understand the project goals and scope
+3. **Check GitHub issues** - Run `gh issue list --state all` to see all tasks and their status
+4. **Sync local tasks** - Create TaskCreate entries for any open issues you'll work on
+5. **Check current branch** - Run `git branch --show-current` and `git status` to understand state
+
+This ensures continuity across sessions and prevents duplicate work or missed context.
+
 ## Working Methodology (ALWAYS FOLLOW)
 
 ### Task Management
