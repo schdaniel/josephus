@@ -1,7 +1,7 @@
 """Unit tests for GitHub App authentication."""
 
 import time
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import jwt
 import pytest
@@ -94,7 +94,7 @@ class TestGitHubAuth:
 
         # Mock HTTP client
         mock_client = AsyncMock()
-        mock_response = AsyncMock()
+        mock_response = Mock()
         mock_response.json.return_value = {
             "token": "test_token_123",
             "expires_at": "2099-01-01T00:00:00Z",
@@ -130,7 +130,7 @@ class TestGitHubAuth:
 
         # Mock HTTP client
         mock_client = AsyncMock()
-        mock_response = AsyncMock()
+        mock_response = Mock()
         mock_response.json.return_value = {
             "token": "new_token",
             "expires_at": "2099-01-01T00:00:00Z",
