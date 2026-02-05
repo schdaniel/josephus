@@ -37,7 +37,7 @@ class GenerationConfig:
     include_index: bool = True
 
     # LLM parameters
-    max_tokens: int = 8192
+    max_tokens: int = 16384
     temperature: float = 0.7
 
 
@@ -112,6 +112,10 @@ class DocGenerator:
     def _parse_response(self, content: str, output_dir: str) -> dict[str, str]:
         """Parse LLM response to extract documentation files.
 
+        Supports two formats:
+        1. File markers: <!-- FILE: path/to/file.md --> followed by content
+        2. JSON fallback: {"path": "content"} format
+
         Args:
             content: Raw LLM response
             output_dir: Output directory prefix
@@ -119,33 +123,53 @@ class DocGenerator:
         Returns:
             Dict of path -> content
         """
-        # Try to extract JSON from response
-        json_match = re.search(r"\{[\s\S]*\}", content)
-        if not json_match:
-            logfire.warn("No JSON found in LLM response, using fallback")
-            return self._fallback_parse(content, output_dir)
+        # Try file marker format first (preferred)
+        file_pattern = r"<!--\s*FILE:\s*([^\s>]+)\s*-->"
+        markers = list(re.finditer(file_pattern, content))
 
-        try:
-            data = json.loads(json_match.group())
-
-            # Normalize paths
+        if markers:
             files = {}
-            for path, doc_content in data.items():
-                # Ensure path starts with output_dir
+            for i, match in enumerate(markers):
+                path = match.group(1).strip()
+
+                # Get content between this marker and next (or end)
+                start = match.end()
+                end = markers[i + 1].start() if i + 1 < len(markers) else len(content)
+                doc_content = content[start:end].strip()
+
+                # Normalize path
                 if not path.startswith(output_dir):
                     path = f"{output_dir}/{path.lstrip('/')}"
-
-                # Ensure .md extension
                 if not path.endswith(".md"):
                     path = f"{path}.md"
 
                 files[path] = doc_content
 
-            return files
+            if files:
+                logfire.info("Parsed docs using file markers", file_count=len(files))
+                return files
 
-        except json.JSONDecodeError as e:
-            logfire.warn("Failed to parse JSON from response", error=str(e))
-            return self._fallback_parse(content, output_dir)
+        # Fallback to JSON format
+        json_match = re.search(r"\{[\s\S]*\}", content)
+        if json_match:
+            try:
+                data = json.loads(json_match.group())
+                files = {}
+                for path, doc_content in data.items():
+                    if not path.startswith(output_dir):
+                        path = f"{output_dir}/{path.lstrip('/')}"
+                    if not path.endswith(".md"):
+                        path = f"{path}.md"
+                    files[path] = doc_content
+
+                logfire.info("Parsed docs using JSON format", file_count=len(files))
+                return files
+            except json.JSONDecodeError as e:
+                logfire.warn("Failed to parse JSON from response", error=str(e))
+
+        # Final fallback
+        logfire.warn("No structured format found, using fallback")
+        return self._fallback_parse(content, output_dir)
 
     def _fallback_parse(self, content: str, output_dir: str) -> dict[str, str]:
         """Fallback parsing when JSON extraction fails.

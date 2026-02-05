@@ -16,7 +16,8 @@ Guidelines:
 - Generate valid markdown with proper formatting
 
 Output format:
-- Return documentation as a JSON object with file paths as keys and markdown content as values
+- Return documentation as multiple markdown files separated by file markers
+- Use the format: <!-- FILE: path/to/file.md --> followed by the file content
 - Use standard documentation structure (getting-started, installation, features, etc.)
 - Each file should be self-contained but link to related pages where appropriate"""
 
@@ -67,21 +68,30 @@ def build_generation_prompt(
     parts.extend(
         [
             "",
-            "Generate documentation files as a JSON object. Example format:",
-            "```json",
-            "{",
-            '  "docs/index.md": "# Project Name\\n\\nWelcome to...",',
-            '  "docs/getting-started.md": "# Getting Started\\n\\n## Installation...",',
-            '  "docs/features/feature-a.md": "# Feature A\\n\\n..."',
-            "}",
-            "```",
+            "Generate documentation files using file markers. Example format:",
+            "",
+            "<!-- FILE: docs/index.md -->",
+            "# Project Name",
+            "",
+            "Welcome to the project documentation...",
+            "",
+            "<!-- FILE: docs/getting-started.md -->",
+            "# Getting Started",
+            "",
+            "## Installation",
+            "...",
+            "",
+            "<!-- FILE: docs/features/feature-a.md -->",
+            "# Feature A",
+            "...",
             "",
             "Requirements:",
             "- Include at minimum: index.md (overview), getting-started.md (installation & quickstart)",
             "- Add feature documentation for each major user-facing feature",
             "- Use clear section headings",
             "- Include code examples where appropriate",
-            "- Return ONLY the JSON object, no additional text",
+            "- Start each file with <!-- FILE: path/to/file.md --> marker",
+            "- Write complete, well-structured documentation for each file",
         ]
     )
 
@@ -115,5 +125,5 @@ def build_refinement_prompt(
 {feedback}
 </feedback>
 
-Return the refined documentation as a JSON object with the same format (file paths as keys, markdown content as values).
-Only include files that need changes. Return ONLY the JSON object, no additional text."""
+Return the refined documentation using file markers (<!-- FILE: path/to/file.md -->).
+Only include files that need changes."""
