@@ -5,12 +5,38 @@ from unittest.mock import AsyncMock
 import pytest
 
 from josephus.config import (
+    DeterministicConfig,
     RepoConfig,
-    ScopeConfig,
-    StyleConfig,
     load_repo_config,
-    parse_repo_config,
+    parse_deterministic_config,
 )
+
+
+class TestDeterministicConfig:
+    """Tests for DeterministicConfig model."""
+
+    def test_default_config(self) -> None:
+        """Test default configuration values."""
+        config = DeterministicConfig()
+
+        assert config.output_dir == "docs"
+        assert config.output_format == "markdown"
+        assert config.create_pr is True
+        assert config.branch_prefix == "josephus/docs"
+
+    def test_custom_config(self) -> None:
+        """Test custom configuration values."""
+        config = DeterministicConfig(
+            output_dir="documentation",
+            output_format="html",
+            create_pr=False,
+            branch_prefix="docs/auto",
+        )
+
+        assert config.output_dir == "documentation"
+        assert config.output_format == "html"
+        assert config.create_pr is False
+        assert config.branch_prefix == "docs/auto"
 
 
 class TestRepoConfig:
@@ -21,30 +47,24 @@ class TestRepoConfig:
         config = RepoConfig()
 
         assert config.guidelines == ""
+        assert config.scope == ""
+        assert config.style == ""
         assert config.output_dir == "docs"
-        assert isinstance(config.scope, ScopeConfig)
-        assert isinstance(config.style, StyleConfig)
+        assert config.create_pr is True
 
     def test_full_config(self) -> None:
         """Test configuration with all fields."""
         config = RepoConfig(
+            config=DeterministicConfig(output_dir="api-docs"),
             guidelines="Write for developers",
-            scope=ScopeConfig(
-                include="All public APIs",
-                exclude="Internal utilities",
-            ),
-            style=StyleConfig(
-                code_examples="Python and TypeScript",
-                diagram_style="Mermaid",
-            ),
-            output_dir="documentation",
+            scope="All public APIs",
+            style="Use TypeScript examples",
         )
 
         assert config.guidelines == "Write for developers"
-        assert config.scope.include == "All public APIs"
-        assert config.scope.exclude == "Internal utilities"
-        assert config.style.code_examples == "Python and TypeScript"
-        assert config.output_dir == "documentation"
+        assert config.scope == "All public APIs"
+        assert config.style == "Use TypeScript examples"
+        assert config.output_dir == "api-docs"
 
     def test_to_prompt_context_empty(self) -> None:
         """Test prompt context generation with empty config."""
@@ -64,106 +84,114 @@ class TestRepoConfig:
         """Test prompt context with all fields."""
         config = RepoConfig(
             guidelines="Write for developers",
-            scope=ScopeConfig(
-                include="All public APIs",
-                exclude="Internal utilities",
-            ),
-            style=StyleConfig(
-                code_examples="Python",
-                diagram_style="Mermaid",
-            ),
+            scope="All public APIs\nExclude internal utilities",
+            style="Use Python examples\nInclude Mermaid diagrams",
         )
         context = config.to_prompt_context()
 
         assert "## Documentation Guidelines" in context
         assert "Write for developers" in context
         assert "## Scope" in context
-        assert "**Include:** All public APIs" in context
-        assert "**Exclude:** Internal utilities" in context
+        assert "All public APIs" in context
         assert "## Style Preferences" in context
-        assert "**Code Examples:** Python" in context
-        assert "**Diagrams:** Mermaid" in context
+        assert "Use Python examples" in context
+
+    def test_convenience_accessors(self) -> None:
+        """Test convenience property accessors."""
+        config = RepoConfig(
+            config=DeterministicConfig(
+                output_dir="custom-docs",
+                output_format="html",
+                create_pr=False,
+                branch_prefix="auto/docs",
+            )
+        )
+
+        assert config.output_dir == "custom-docs"
+        assert config.output_format == "html"
+        assert config.create_pr is False
+        assert config.branch_prefix == "auto/docs"
 
 
-class TestParseRepoConfig:
-    """Tests for parse_repo_config function."""
+class TestParseDeterministicConfig:
+    """Tests for parse_deterministic_config function."""
 
     def test_parse_empty_yaml(self) -> None:
         """Test parsing empty YAML."""
-        config = parse_repo_config("")
-        assert isinstance(config, RepoConfig)
-        assert config.guidelines == ""
+        config = parse_deterministic_config("")
+        assert isinstance(config, DeterministicConfig)
+        assert config.output_dir == "docs"
 
     def test_parse_simple_config(self) -> None:
         """Test parsing simple YAML config."""
         yaml_content = """
-guidelines: |
-  Target audience: Developers
-  Tone: Technical
+output_dir: api-docs
+output_format: markdown
 """
-        config = parse_repo_config(yaml_content)
+        config = parse_deterministic_config(yaml_content)
 
-        assert "Target audience: Developers" in config.guidelines
-        assert "Tone: Technical" in config.guidelines
+        assert config.output_dir == "api-docs"
+        assert config.output_format == "markdown"
 
     def test_parse_full_config(self) -> None:
         """Test parsing full YAML config."""
         yaml_content = """
-guidelines: |
-  Write for non-technical readers.
-  Use simple language.
-
-scope:
-  include: All REST API endpoints
-  exclude: Internal microservices
-
-style:
-  code_examples: "TypeScript and Python"
-  diagram_style: "Mermaid flowcharts"
-
 output_dir: docs/api
+output_format: html
+create_pr: false
+branch_prefix: documentation/auto
 """
-        config = parse_repo_config(yaml_content)
+        config = parse_deterministic_config(yaml_content)
 
-        assert "non-technical readers" in config.guidelines
-        assert config.scope.include == "All REST API endpoints"
-        assert config.scope.exclude == "Internal microservices"
-        assert config.style.code_examples == "TypeScript and Python"
-        assert config.style.diagram_style == "Mermaid flowcharts"
         assert config.output_dir == "docs/api"
+        assert config.output_format == "html"
+        assert config.create_pr is False
+        assert config.branch_prefix == "documentation/auto"
 
     def test_parse_invalid_yaml(self) -> None:
         """Test parsing invalid YAML raises error."""
         invalid_yaml = "{{invalid: yaml"
         with pytest.raises(ValueError, match="Invalid YAML"):
-            parse_repo_config(invalid_yaml)
+            parse_deterministic_config(invalid_yaml)
 
     def test_parse_non_mapping_yaml(self) -> None:
         """Test parsing non-mapping YAML raises error."""
         non_mapping = "- item1\n- item2"
         with pytest.raises(ValueError, match="must be a YAML mapping"):
-            parse_repo_config(non_mapping)
+            parse_deterministic_config(non_mapping)
 
     def test_parse_partial_config(self) -> None:
         """Test parsing config with missing fields uses defaults."""
         yaml_content = """
-guidelines: Just some guidelines
+output_dir: custom
 """
-        config = parse_repo_config(yaml_content)
+        config = parse_deterministic_config(yaml_content)
 
-        assert config.guidelines == "Just some guidelines"
-        assert config.output_dir == "docs"  # Default
-        assert config.scope.include == ""  # Default
+        assert config.output_dir == "custom"
+        assert config.output_format == "markdown"  # Default
+        assert config.create_pr is True  # Default
 
 
 class TestLoadRepoConfig:
     """Tests for load_repo_config function."""
 
     @pytest.mark.asyncio
-    async def test_load_config_first_filename(self) -> None:
-        """Test loading config from .josephus.yml."""
+    async def test_load_config_all_files(self) -> None:
+        """Test loading config with all files present."""
         mock_client = AsyncMock()
-        mock_client.get_file_content.return_value = "guidelines: Test guidelines"
+
+        files = {
+            ".josephus/config.yml": "output_dir: api-docs",
+            ".josephus/guidelines.md": "# Guidelines\nWrite for developers",
+            ".josephus/scope.md": "# Scope\nAll public APIs",
+            ".josephus/style.md": "# Style\nUse TypeScript",
+        }
+
+        async def mock_get_file(**kwargs: object) -> str | None:
+            path = kwargs.get("path")
+            return files.get(str(path))
+
+        mock_client.get_file_content.side_effect = mock_get_file
 
         config = await load_repo_config(
             github_client=mock_client,
@@ -172,26 +200,25 @@ class TestLoadRepoConfig:
             repo="test-repo",
         )
 
-        assert config.guidelines == "Test guidelines"
-        mock_client.get_file_content.assert_called_once_with(
-            installation_id=12345,
-            owner="user",
-            repo="test-repo",
-            path=".josephus.yml",
-            ref=None,
-        )
+        assert config.output_dir == "api-docs"
+        assert "Write for developers" in config.guidelines
+        assert "All public APIs" in config.scope
+        assert "Use TypeScript" in config.style
 
     @pytest.mark.asyncio
-    async def test_load_config_fallback_filename(self) -> None:
-        """Test loading config falls back to alternative filenames."""
+    async def test_load_config_partial_files(self) -> None:
+        """Test loading config with only some files present."""
         mock_client = AsyncMock()
 
-        # First call (.josephus.yml) returns None
-        # Second call (.josephus.yaml) returns config
-        mock_client.get_file_content.side_effect = [
-            None,
-            "guidelines: From yaml file",
-        ]
+        files = {
+            ".josephus/guidelines.md": "Just some guidelines",
+        }
+
+        async def mock_get_file(**kwargs: object) -> str | None:
+            path = kwargs.get("path")
+            return files.get(str(path))
+
+        mock_client.get_file_content.side_effect = mock_get_file
 
         config = await load_repo_config(
             github_client=mock_client,
@@ -200,12 +227,14 @@ class TestLoadRepoConfig:
             repo="test-repo",
         )
 
-        assert config.guidelines == "From yaml file"
-        assert mock_client.get_file_content.call_count == 2
+        assert config.output_dir == "docs"  # Default
+        assert config.guidelines == "Just some guidelines"
+        assert config.scope == ""
+        assert config.style == ""
 
     @pytest.mark.asyncio
-    async def test_load_config_no_file_found(self) -> None:
-        """Test loading config returns defaults when no file found."""
+    async def test_load_config_no_files(self) -> None:
+        """Test loading config returns defaults when no files found."""
         mock_client = AsyncMock()
         mock_client.get_file_content.return_value = None
 
@@ -217,16 +246,18 @@ class TestLoadRepoConfig:
         )
 
         assert isinstance(config, RepoConfig)
+        assert config.output_dir == "docs"
         assert config.guidelines == ""
-        assert mock_client.get_file_content.call_count == 4  # Tried all filenames
+        assert config.scope == ""
+        assert config.style == ""
 
     @pytest.mark.asyncio
     async def test_load_config_with_ref(self) -> None:
         """Test loading config from specific ref."""
         mock_client = AsyncMock()
-        mock_client.get_file_content.return_value = "guidelines: Branch config"
+        mock_client.get_file_content.return_value = "Branch specific content"
 
-        config = await load_repo_config(
+        await load_repo_config(
             github_client=mock_client,
             installation_id=12345,
             owner="user",
@@ -234,14 +265,12 @@ class TestLoadRepoConfig:
             ref="feature-branch",
         )
 
-        mock_client.get_file_content.assert_called_with(
-            installation_id=12345,
-            owner="user",
-            repo="test-repo",
-            path=".josephus.yml",
-            ref="feature-branch",
-        )
-        assert config.guidelines == "Branch config"
+        # Check that ref was passed to all file fetches
+        calls = mock_client.get_file_content.call_args_list
+        for call in calls:
+            assert (
+                call.kwargs.get("ref") == "feature-branch" or call[1].get("ref") == "feature-branch"
+            )
 
     @pytest.mark.asyncio
     async def test_load_config_handles_exceptions(self) -> None:
@@ -259,3 +288,26 @@ class TestLoadRepoConfig:
 
         assert isinstance(config, RepoConfig)
         assert config.guidelines == ""
+
+    @pytest.mark.asyncio
+    async def test_load_config_invalid_yaml_uses_defaults(self) -> None:
+        """Test loading config with invalid YAML uses defaults."""
+        mock_client = AsyncMock()
+
+        async def mock_get_file(**kwargs: object) -> str | None:
+            path = kwargs.get("path")
+            if path == ".josephus/config.yml":
+                return "{{invalid yaml"
+            return None
+
+        mock_client.get_file_content.side_effect = mock_get_file
+
+        config = await load_repo_config(
+            github_client=mock_client,
+            installation_id=12345,
+            owner="user",
+            repo="test-repo",
+        )
+
+        # Should use defaults instead of raising
+        assert config.output_dir == "docs"

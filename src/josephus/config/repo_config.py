@@ -1,67 +1,74 @@
-"""Repository configuration parsing for .josephus.yml files."""
+"""Repository configuration parsing for .josephus/ directory.
+
+Configuration structure:
+    .josephus/
+        config.yml       # Deterministic settings (output_dir, format, etc.)
+        guidelines.md    # Natural language documentation guidelines
+        scope.md         # What to include/exclude in documentation
+        style.md         # Style preferences (code examples, diagrams)
+"""
+
+import contextlib
 
 import yaml
 from pydantic import BaseModel, Field
 
 from josephus.github import GitHubClient
 
-# Default config file names to look for
-CONFIG_FILE_NAMES = [".josephus.yml", ".josephus.yaml", "josephus.yml", "josephus.yaml"]
+# Config directory and file names
+CONFIG_DIR = ".josephus"
+CONFIG_FILE = "config.yml"
+GUIDELINES_FILE = "guidelines.md"
+SCOPE_FILE = "scope.md"
+STYLE_FILE = "style.md"
 
 
-class ScopeConfig(BaseModel):
-    """Configuration for documentation scope."""
+class DeterministicConfig(BaseModel):
+    """Deterministic configuration settings from config.yml."""
 
-    include: str = Field(
-        default="",
-        description="Natural language description of what to include in documentation",
-    )
-    exclude: str = Field(
-        default="",
-        description="Natural language description of what to exclude from documentation",
-    )
-
-
-class StyleConfig(BaseModel):
-    """Configuration for documentation style."""
-
-    code_examples: str = Field(
-        default="",
-        description="Preferred languages for code examples",
-    )
-    diagram_style: str = Field(
-        default="",
-        description="Preferred diagram format (e.g., Mermaid, PlantUML)",
+    output_dir: str = Field(
+        default="docs",
+        description="Output directory for generated documentation",
     )
     output_format: str = Field(
         default="markdown",
-        description="Output format for documentation",
+        description="Output format (markdown, html, etc.)",
+    )
+    create_pr: bool = Field(
+        default=True,
+        description="Whether to create a PR with generated docs",
+    )
+    branch_prefix: str = Field(
+        default="josephus/docs",
+        description="Prefix for generated branch names",
     )
 
 
 class RepoConfig(BaseModel):
     """Repository-level configuration for documentation generation.
 
-    This is parsed from .josephus.yml files in user repositories.
-    All fields accept natural language descriptions that are passed
-    to the LLM for interpretation.
+    Combines deterministic settings from config.yml with natural language
+    content from markdown files.
     """
 
+    # Deterministic settings
+    config: DeterministicConfig = Field(
+        default_factory=DeterministicConfig,
+        description="Deterministic configuration settings",
+    )
+
+    # Natural language content from markdown files
     guidelines: str = Field(
         default="",
-        description="Natural language guidelines for documentation style and content",
+        description="Documentation guidelines from guidelines.md",
     )
-    scope: ScopeConfig = Field(
-        default_factory=ScopeConfig,
-        description="Scope of documentation (what to include/exclude)",
+    scope: str = Field(
+        default="",
+        description="Scope description from scope.md",
     )
-    style: StyleConfig = Field(
-        default_factory=StyleConfig,
-        description="Style preferences for documentation",
-    )
-    output_dir: str = Field(
-        default="docs",
-        description="Output directory for generated documentation",
+    style: str = Field(
+        default="",
+        description="Style preferences from style.md",
     )
 
     def to_prompt_context(self) -> str:
@@ -73,35 +80,45 @@ class RepoConfig(BaseModel):
         sections = []
 
         if self.guidelines:
-            sections.append(f"## Documentation Guidelines\n{self.guidelines}")
+            sections.append(f"## Documentation Guidelines\n\n{self.guidelines}")
 
-        if self.scope.include or self.scope.exclude:
-            scope_parts = []
-            if self.scope.include:
-                scope_parts.append(f"**Include:** {self.scope.include}")
-            if self.scope.exclude:
-                scope_parts.append(f"**Exclude:** {self.scope.exclude}")
-            sections.append("## Scope\n" + "\n".join(scope_parts))
+        if self.scope:
+            sections.append(f"## Scope\n\n{self.scope}")
 
-        if self.style.code_examples or self.style.diagram_style:
-            style_parts = []
-            if self.style.code_examples:
-                style_parts.append(f"**Code Examples:** {self.style.code_examples}")
-            if self.style.diagram_style:
-                style_parts.append(f"**Diagrams:** {self.style.diagram_style}")
-            sections.append("## Style Preferences\n" + "\n".join(style_parts))
+        if self.style:
+            sections.append(f"## Style Preferences\n\n{self.style}")
 
         return "\n\n".join(sections) if sections else ""
 
+    @property
+    def output_dir(self) -> str:
+        """Convenience accessor for output directory."""
+        return self.config.output_dir
 
-def parse_repo_config(yaml_content: str) -> RepoConfig:
-    """Parse repository configuration from YAML content.
+    @property
+    def output_format(self) -> str:
+        """Convenience accessor for output format."""
+        return self.config.output_format
+
+    @property
+    def create_pr(self) -> bool:
+        """Convenience accessor for create_pr setting."""
+        return self.config.create_pr
+
+    @property
+    def branch_prefix(self) -> str:
+        """Convenience accessor for branch prefix."""
+        return self.config.branch_prefix
+
+
+def parse_deterministic_config(yaml_content: str) -> DeterministicConfig:
+    """Parse deterministic configuration from YAML content.
 
     Args:
-        yaml_content: Raw YAML string from .josephus.yml file.
+        yaml_content: Raw YAML string from config.yml.
 
     Returns:
-        Parsed RepoConfig object with defaults for missing fields.
+        Parsed DeterministicConfig object with defaults for missing fields.
 
     Raises:
         ValueError: If YAML is invalid.
@@ -112,12 +129,12 @@ def parse_repo_config(yaml_content: str) -> RepoConfig:
         raise ValueError(f"Invalid YAML: {e}") from e
 
     if data is None:
-        return RepoConfig()
+        return DeterministicConfig()
 
     if not isinstance(data, dict):
         raise ValueError("Config must be a YAML mapping")
 
-    return RepoConfig.model_validate(data)
+    return DeterministicConfig.model_validate(data)
 
 
 async def load_repo_config(
@@ -129,11 +146,11 @@ async def load_repo_config(
 ) -> RepoConfig:
     """Load repository configuration from GitHub.
 
-    Looks for config files in the following order:
-    1. .josephus.yml
-    2. .josephus.yaml
-    3. josephus.yml
-    4. josephus.yaml
+    Looks for configuration in .josephus/ directory:
+    - config.yml for deterministic settings
+    - guidelines.md for documentation guidelines
+    - scope.md for scope description
+    - style.md for style preferences
 
     Args:
         github_client: GitHub API client.
@@ -143,22 +160,52 @@ async def load_repo_config(
         ref: Git ref (branch/tag), defaults to default branch.
 
     Returns:
-        Parsed RepoConfig, or default config if no file found.
+        Parsed RepoConfig with all available configuration.
     """
-    for filename in CONFIG_FILE_NAMES:
-        try:
-            content = await github_client.get_file_content(
-                installation_id=installation_id,
-                owner=owner,
-                repo=repo,
-                path=filename,
-                ref=ref,
-            )
-            if content:
-                return parse_repo_config(content)
-        except Exception:
-            # File not found or other error, try next filename
-            continue
+    # Load deterministic config
+    config = DeterministicConfig()
+    config_content = await _get_file_content(
+        github_client, installation_id, owner, repo, f"{CONFIG_DIR}/{CONFIG_FILE}", ref
+    )
+    if config_content:
+        with contextlib.suppress(ValueError):
+            config = parse_deterministic_config(config_content)
 
-    # No config file found, return defaults
-    return RepoConfig()
+    # Load natural language files
+    guidelines = await _get_file_content(
+        github_client, installation_id, owner, repo, f"{CONFIG_DIR}/{GUIDELINES_FILE}", ref
+    )
+    scope = await _get_file_content(
+        github_client, installation_id, owner, repo, f"{CONFIG_DIR}/{SCOPE_FILE}", ref
+    )
+    style = await _get_file_content(
+        github_client, installation_id, owner, repo, f"{CONFIG_DIR}/{STYLE_FILE}", ref
+    )
+
+    return RepoConfig(
+        config=config,
+        guidelines=guidelines or "",
+        scope=scope or "",
+        style=style or "",
+    )
+
+
+async def _get_file_content(
+    github_client: GitHubClient,
+    installation_id: int,
+    owner: str,
+    repo: str,
+    path: str,
+    ref: str | None,
+) -> str | None:
+    """Get file content from GitHub, returning None if not found."""
+    try:
+        return await github_client.get_file_content(
+            installation_id=installation_id,
+            owner=owner,
+            repo=repo,
+            path=path,
+            ref=ref,
+        )
+    except Exception:
+        return None
