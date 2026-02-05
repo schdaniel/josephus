@@ -1,7 +1,5 @@
 """Unit tests for webhook signature verification."""
 
-import pytest
-
 from josephus.api.routes.webhooks import verify_webhook_signature
 
 
@@ -10,20 +8,21 @@ class TestWebhookSignatureVerification:
 
     def test_valid_signature(self) -> None:
         """Test that valid signatures are accepted."""
-        payload = b'{"action": "opened"}'
-        secret = "test-secret"
-        # Pre-computed valid signature for this payload/secret
-        signature = "sha256=a1b2c3d4e5f6..."  # This would be the real computed value
-
-        # For now, test with actual computation
         import hashlib
         import hmac
 
-        expected = "sha256=" + hmac.new(
-            secret.encode("utf-8"),
-            payload,
-            hashlib.sha256,
-        ).hexdigest()
+        payload = b'{"action": "opened"}'
+        secret = "test-secret"
+
+        # Compute valid signature
+        expected = (
+            "sha256="
+            + hmac.new(
+                secret.encode("utf-8"),
+                payload,
+                hashlib.sha256,
+            ).hexdigest()
+        )
 
         assert verify_webhook_signature(payload, expected, secret) is True
 
@@ -52,11 +51,14 @@ class TestWebhookSignatureVerification:
         import hmac
 
         # Sign with correct secret
-        signature = "sha256=" + hmac.new(
-            correct_secret.encode("utf-8"),
-            payload,
-            hashlib.sha256,
-        ).hexdigest()
+        signature = (
+            "sha256="
+            + hmac.new(
+                correct_secret.encode("utf-8"),
+                payload,
+                hashlib.sha256,
+            ).hexdigest()
+        )
 
         # Verify with wrong secret should fail
         assert verify_webhook_signature(payload, signature, wrong_secret) is False
@@ -71,11 +73,14 @@ class TestWebhookSignatureVerification:
         import hashlib
         import hmac
 
-        valid_signature = "sha256=" + hmac.new(
-            secret.encode("utf-8"),
-            payload,
-            hashlib.sha256,
-        ).hexdigest()
+        valid_signature = (
+            "sha256="
+            + hmac.new(
+                secret.encode("utf-8"),
+                payload,
+                hashlib.sha256,
+            ).hexdigest()
+        )
 
         # Both of these should take similar time (no short-circuit)
         # This is hard to test directly, but we ensure the function works

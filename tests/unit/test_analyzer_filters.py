@@ -1,7 +1,5 @@
 """Unit tests for repository file filtering."""
 
-import pytest
-
 from josephus.analyzer.filters import FileFilter, filter_tree
 
 

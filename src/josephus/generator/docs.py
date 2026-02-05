@@ -2,7 +2,7 @@
 
 import json
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import logfire
 
@@ -120,7 +120,7 @@ class DocGenerator:
             Dict of path -> content
         """
         # Try to extract JSON from response
-        json_match = re.search(r'\{[\s\S]*\}', content)
+        json_match = re.search(r"\{[\s\S]*\}", content)
         if not json_match:
             logfire.warn("No JSON found in LLM response, using fallback")
             return self._fallback_parse(content, output_dir)

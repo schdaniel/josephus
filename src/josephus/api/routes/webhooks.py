@@ -26,11 +26,14 @@ def verify_webhook_signature(payload: bytes, signature: str | None, secret: str)
     if not signature:
         return False
 
-    expected = "sha256=" + hmac.new(
-        secret.encode("utf-8"),
-        payload,
-        hashlib.sha256,
-    ).hexdigest()
+    expected = (
+        "sha256="
+        + hmac.new(
+            secret.encode("utf-8"),
+            payload,
+            hashlib.sha256,
+        ).hexdigest()
+    )
 
     return hmac.compare_digest(expected, signature)
 
@@ -53,13 +56,14 @@ async def handle_github_webhook(
     body = await request.body()
 
     # Verify webhook signature (CRITICAL for security)
-    if settings.github_webhook_secret:
-        if not verify_webhook_signature(body, x_hub_signature_256, settings.github_webhook_secret):
-            logfire.warn("Invalid webhook signature", delivery_id=x_github_delivery)
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid webhook signature",
-            )
+    if settings.github_webhook_secret and not verify_webhook_signature(
+        body, x_hub_signature_256, settings.github_webhook_secret
+    ):
+        logfire.warn("Invalid webhook signature", delivery_id=x_github_delivery)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid webhook signature",
+        )
 
     # Parse payload
     payload: dict[str, Any] = await request.json()

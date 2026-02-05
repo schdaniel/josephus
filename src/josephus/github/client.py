@@ -2,7 +2,6 @@
 
 import base64
 from dataclasses import dataclass
-from pathlib import PurePosixPath
 from typing import Any
 
 import httpx
@@ -509,30 +508,26 @@ class GitHubClient:
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 404:
                 # Branch doesn't exist, create from base
-                base_ref = await self.get_ref(
-                    installation_id, owner, repo, f"heads/{base}"
-                )
+                base_ref = await self.get_ref(installation_id, owner, repo, f"heads/{base}")
                 base_sha = base_ref["object"]["sha"]
-                await self.create_branch(
-                    installation_id, owner, repo, branch, base_sha
-                )
+                await self.create_branch(installation_id, owner, repo, branch, base_sha)
             else:
                 raise
 
         # Get current tree
-        current_tree = await self.get_tree(
-            installation_id, owner, repo, base_sha, recursive=False
-        )
+        current_tree = await self.get_tree(installation_id, owner, repo, base_sha, recursive=False)
 
         # Build tree entries for new/updated files
         tree_entries = []
         for path, content in files.items():
-            tree_entries.append({
-                "path": path,
-                "mode": "100644",  # Regular file
-                "type": "blob",
-                "content": content,
-            })
+            tree_entries.append(
+                {
+                    "path": path,
+                    "mode": "100644",  # Regular file
+                    "type": "blob",
+                    "content": content,
+                }
+            )
 
         # Create new tree
         new_tree = await self.create_tree(

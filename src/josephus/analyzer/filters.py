@@ -71,28 +71,105 @@ DEFAULT_EXCLUDES = [
 # File extensions we can meaningfully process
 TEXT_EXTENSIONS = {
     # Programming languages
-    ".py", ".js", ".ts", ".jsx", ".tsx", ".java", ".kt", ".scala",
-    ".go", ".rs", ".c", ".cpp", ".h", ".hpp", ".cs", ".rb", ".php",
-    ".swift", ".m", ".mm", ".r", ".R", ".jl", ".lua", ".pl", ".pm",
-    ".ex", ".exs", ".erl", ".hrl", ".clj", ".cljs", ".hs", ".elm",
-    ".f90", ".f95", ".f03", ".v", ".sv", ".vhd", ".zig", ".nim",
-    ".d", ".dart", ".groovy", ".gradle",
+    ".py",
+    ".js",
+    ".ts",
+    ".jsx",
+    ".tsx",
+    ".java",
+    ".kt",
+    ".scala",
+    ".go",
+    ".rs",
+    ".c",
+    ".cpp",
+    ".h",
+    ".hpp",
+    ".cs",
+    ".rb",
+    ".php",
+    ".swift",
+    ".m",
+    ".mm",
+    ".r",
+    ".R",
+    ".jl",
+    ".lua",
+    ".pl",
+    ".pm",
+    ".ex",
+    ".exs",
+    ".erl",
+    ".hrl",
+    ".clj",
+    ".cljs",
+    ".hs",
+    ".elm",
+    ".f90",
+    ".f95",
+    ".f03",
+    ".v",
+    ".sv",
+    ".vhd",
+    ".zig",
+    ".nim",
+    ".d",
+    ".dart",
+    ".groovy",
+    ".gradle",
     # Web
-    ".html", ".htm", ".css", ".scss", ".sass", ".less", ".vue",
-    ".svelte", ".astro",
+    ".html",
+    ".htm",
+    ".css",
+    ".scss",
+    ".sass",
+    ".less",
+    ".vue",
+    ".svelte",
+    ".astro",
     # Config
-    ".json", ".yaml", ".yml", ".toml", ".ini", ".cfg", ".conf",
-    ".xml", ".plist", ".env.example",
+    ".json",
+    ".yaml",
+    ".yml",
+    ".toml",
+    ".ini",
+    ".cfg",
+    ".conf",
+    ".xml",
+    ".plist",
+    ".env.example",
     # Documentation
-    ".md", ".mdx", ".rst", ".txt", ".adoc",
+    ".md",
+    ".mdx",
+    ".rst",
+    ".txt",
+    ".adoc",
     # Shell/Scripts
-    ".sh", ".bash", ".zsh", ".fish", ".ps1", ".bat", ".cmd",
+    ".sh",
+    ".bash",
+    ".zsh",
+    ".fish",
+    ".ps1",
+    ".bat",
+    ".cmd",
     # Data
-    ".sql", ".graphql", ".gql", ".prisma",
+    ".sql",
+    ".graphql",
+    ".gql",
+    ".prisma",
     # Other
-    ".dockerfile", ".containerfile", ".tf", ".hcl",
-    "Makefile", "Dockerfile", "Containerfile", "Justfile",
-    "CMakeLists.txt", "Rakefile", "Gemfile", "Brewfile",
+    ".dockerfile",
+    ".containerfile",
+    ".tf",
+    ".hcl",
+    "Makefile",
+    "Dockerfile",
+    "Containerfile",
+    "Justfile",
+    "CMakeLists.txt",
+    "Rakefile",
+    "Gemfile",
+    "Brewfile",
 }
 
 
@@ -128,22 +205,25 @@ class FileFilter:
 
         # Check if it's a text file we can process
         path_obj = PurePosixPath(path)
-        if path_obj.suffix.lower() not in TEXT_EXTENSIONS:
-            # Check for extensionless files with known names
-            if path_obj.name not in {"Makefile", "Dockerfile", "Containerfile",
-                                      "Justfile", "Rakefile", "Gemfile", "Brewfile"}:
-                return False
-
-        # Check include patterns first (if specified, only include matching)
-        if self.include_patterns:
-            if not any(self._match(path, pattern) for pattern in self.include_patterns):
-                return False
-
-        # Check exclude patterns
-        if any(self._match(path, pattern) for pattern in self.exclude_patterns):
+        if path_obj.suffix.lower() not in TEXT_EXTENSIONS and path_obj.name not in {
+            "Makefile",
+            "Dockerfile",
+            "Containerfile",
+            "Justfile",
+            "Rakefile",
+            "Gemfile",
+            "Brewfile",
+        }:
             return False
 
-        return True
+        # Check include patterns first (if specified, only include matching)
+        if self.include_patterns and not any(
+            self._match(path, pattern) for pattern in self.include_patterns
+        ):
+            return False
+
+        # Check exclude patterns
+        return not any(self._match(path, pattern) for pattern in self.exclude_patterns)
 
     def _match(self, path: str, pattern: str) -> bool:
         """Check if path matches a glob pattern."""
@@ -155,7 +235,7 @@ class FileFilter:
             if len(parts) == 2:
                 prefix, suffix = parts
                 if path.startswith(prefix.rstrip("/")):
-                    remaining = path[len(prefix.rstrip("/")):]
+                    remaining = path[len(prefix.rstrip("/")) :]
                     if not suffix or fnmatch.fnmatch(remaining, "*" + suffix):
                         return True
             return False

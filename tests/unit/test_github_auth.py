@@ -8,7 +8,6 @@ import pytest
 
 from josephus.github.auth import GitHubAuth, InstallationToken
 
-
 # Test RSA key pair (DO NOT USE IN PRODUCTION)
 TEST_PRIVATE_KEY = """-----BEGIN RSA PRIVATE KEY-----
 MIIEowIBAAKCAQEA0Z3VS5JJcds3xfn/ygWyF8PbnGy0AHB7MfszK0BYmr0dwHD0

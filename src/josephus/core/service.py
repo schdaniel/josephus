@@ -155,7 +155,7 @@ class JosephusService:
         pr_number = None
 
         if create_pr:
-            title = pr_title or f"docs: Add generated documentation"
+            title = pr_title or "docs: Add generated documentation"
             body = pr_body or self._generate_pr_body(analysis, generated_docs)
 
             pr = await self.github.create_pull_request(

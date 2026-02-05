@@ -6,7 +6,7 @@ import logfire
 import tiktoken
 
 from josephus.analyzer.filters import FileFilter, FilteredFile, filter_tree
-from josephus.github import GitHubClient, RepoFile, Repository
+from josephus.github import GitHubClient, Repository
 
 
 @dataclass
@@ -88,9 +88,7 @@ class RepoAnalyzer:
         target_ref = ref or repository.default_branch
 
         # Get full tree
-        tree = await self.github.get_tree(
-            installation_id, owner, repo, target_ref, recursive=True
-        )
+        tree = await self.github.get_tree(installation_id, owner, repo, target_ref, recursive=True)
 
         # Filter files
         filtered_files = filter_tree(tree.tree, self.file_filter)
@@ -151,9 +149,7 @@ class RepoAnalyzer:
                 skipped_files.append(filtered_file.path)
 
         # Build directory structure
-        directory_structure = self._build_directory_structure(
-            [f.path for f in analyzed_files]
-        )
+        directory_structure = self._build_directory_structure([f.path for f in analyzed_files])
 
         logfire.info(
             "Repository analysis complete",
@@ -194,18 +190,35 @@ class RepoAnalyzer:
 
             # Priority 1: Package/config files at root
             if "/" not in f.path and name in {
-                "package.json", "pyproject.toml", "cargo.toml", "go.mod",
-                "setup.py", "setup.cfg", "composer.json", "gemfile",
-                "pubspec.yaml", "build.gradle", "pom.xml",
+                "package.json",
+                "pyproject.toml",
+                "cargo.toml",
+                "go.mod",
+                "setup.py",
+                "setup.cfg",
+                "composer.json",
+                "gemfile",
+                "pubspec.yaml",
+                "build.gradle",
+                "pom.xml",
             }:
                 return (1, f.path)
 
             # Priority 2: Entry points
             if name in {
-                "main.py", "app.py", "index.py", "cli.py",
-                "main.ts", "index.ts", "app.ts",
-                "main.js", "index.js", "app.js",
-                "main.go", "main.rs", "main.java",
+                "main.py",
+                "app.py",
+                "index.py",
+                "cli.py",
+                "main.ts",
+                "index.ts",
+                "app.ts",
+                "main.js",
+                "index.js",
+                "app.js",
+                "main.go",
+                "main.rs",
+                "main.java",
             }:
                 return (2, f.path)
 
@@ -298,33 +311,39 @@ def format_for_llm(analysis: RepoAnalysis, guidelines: str = "") -> str:
     ]
 
     if guidelines:
-        parts.extend([
-            "<documentation_guidelines>",
-            guidelines,
-            "</documentation_guidelines>",
-            "",
-        ])
+        parts.extend(
+            [
+                "<documentation_guidelines>",
+                guidelines,
+                "</documentation_guidelines>",
+                "",
+            ]
+        )
 
     parts.append("<files>")
 
     for file in analysis.files:
-        parts.extend([
-            f'<file path="{file.path}">',
-            file.content,
-            "</file>",
-            "",
-        ])
+        parts.extend(
+            [
+                f'<file path="{file.path}">',
+                file.content,
+                "</file>",
+                "",
+            ]
+        )
 
     parts.append("</files>")
 
     if analysis.truncated or analysis.skipped_files:
-        parts.extend([
-            "",
-            "<note>",
-            f"Analysis was truncated. {len(analysis.skipped_files)} files were skipped ",
-            "due to token limits. Focus on the included files for documentation.",
-            "</note>",
-        ])
+        parts.extend(
+            [
+                "",
+                "<note>",
+                f"Analysis was truncated. {len(analysis.skipped_files)} files were skipped ",
+                "due to token limits. Focus on the included files for documentation.",
+                "</note>",
+            ]
+        )
 
     parts.append("</repository>")
 

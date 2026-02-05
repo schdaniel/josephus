@@ -43,41 +43,47 @@ def build_generation_prompt(
     ]
 
     if guidelines:
-        parts.extend([
-            "",
-            "<user_guidelines>",
-            guidelines,
-            "</user_guidelines>",
-        ])
+        parts.extend(
+            [
+                "",
+                "<user_guidelines>",
+                guidelines,
+                "</user_guidelines>",
+            ]
+        )
 
     if existing_docs:
-        parts.extend([
-            "",
-            "<existing_documentation>",
-            existing_docs,
-            "</existing_documentation>",
-            "",
-            "Consider the existing documentation style and content, but feel free to improve or restructure.",
-        ])
+        parts.extend(
+            [
+                "",
+                "<existing_documentation>",
+                existing_docs,
+                "</existing_documentation>",
+                "",
+                "Consider the existing documentation style and content, but feel free to improve or restructure.",
+            ]
+        )
 
-    parts.extend([
-        "",
-        "Generate documentation files as a JSON object. Example format:",
-        '```json',
-        '{',
-        '  "docs/index.md": "# Project Name\\n\\nWelcome to...",',
-        '  "docs/getting-started.md": "# Getting Started\\n\\n## Installation...",',
-        '  "docs/features/feature-a.md": "# Feature A\\n\\n..."',
-        '}',
-        '```',
-        "",
-        "Requirements:",
-        "- Include at minimum: index.md (overview), getting-started.md (installation & quickstart)",
-        "- Add feature documentation for each major user-facing feature",
-        "- Use clear section headings",
-        "- Include code examples where appropriate",
-        "- Return ONLY the JSON object, no additional text",
-    ])
+    parts.extend(
+        [
+            "",
+            "Generate documentation files as a JSON object. Example format:",
+            "```json",
+            "{",
+            '  "docs/index.md": "# Project Name\\n\\nWelcome to...",',
+            '  "docs/getting-started.md": "# Getting Started\\n\\n## Installation...",',
+            '  "docs/features/feature-a.md": "# Feature A\\n\\n..."',
+            "}",
+            "```",
+            "",
+            "Requirements:",
+            "- Include at minimum: index.md (overview), getting-started.md (installation & quickstart)",
+            "- Add feature documentation for each major user-facing feature",
+            "- Use clear section headings",
+            "- Include code examples where appropriate",
+            "- Return ONLY the JSON object, no additional text",
+        ]
+    )
 
     return "\n".join(parts)
 
@@ -96,8 +102,7 @@ def build_refinement_prompt(
         Formatted prompt string
     """
     docs_text = "\n\n".join(
-        f"### {path}\n```markdown\n{content}\n```"
-        for path, content in generated_docs.items()
+        f"### {path}\n```markdown\n{content}\n```" for path, content in generated_docs.items()
     )
 
     return f"""Refine the following documentation based on the feedback provided.

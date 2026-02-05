@@ -1,7 +1,7 @@
 """FastAPI application setup."""
 
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import AsyncIterator
 
 import logfire
 from fastapi import FastAPI
@@ -13,7 +13,7 @@ from josephus.core.config import get_settings
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     """Application lifespan handler."""
     settings = get_settings()
 

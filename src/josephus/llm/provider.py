@@ -74,8 +74,7 @@ class ClaudeProvider(LLMProvider):
 
         if not self.api_key:
             raise ValueError(
-                "Anthropic API key not configured. "
-                "Set ANTHROPIC_API_KEY environment variable."
+                "Anthropic API key not configured. Set ANTHROPIC_API_KEY environment variable."
             )
 
         self.model = model
