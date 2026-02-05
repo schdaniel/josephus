@@ -232,6 +232,7 @@ class FileFilter:
         - Simple patterns: *.py, README.md
         - Directory patterns: node_modules/**, .git/**
         - Recursive patterns: **/generated/**, **/__snapshots__/**
+        - Complex patterns: src/**/*.py, **/test_*.py
         """
         if "**" not in pattern:
             return fnmatch.fnmatch(path, pattern)
@@ -239,23 +240,37 @@ class FileFilter:
         # Handle ** patterns
         if pattern.startswith("**/"):
             # Pattern like "**/foo/**" or "**/foo.py"
-            # Match if any part of the path matches the rest
             rest = pattern[3:]  # Remove leading "*/"
             if "**" in rest:
-                # Pattern like "**/generated/**" - check if path contains "/generated/"
-                # Extract the middle part (e.g., "generated" from "generated/**")
+                # Pattern like "**/generated/**" - check if path contains the middle part
                 middle = rest.split("/**")[0].split("/*")[0]
                 return f"/{middle}/" in f"/{path}/" or path.startswith(f"{middle}/")
             else:
-                # Pattern like "**/foo.py" - match at any directory level
+                # Pattern like "**/foo.py" - match filename at any level
                 return fnmatch.fnmatch(path, f"*/{rest}") or fnmatch.fnmatch(path, rest)
         elif pattern.endswith("/**"):
             # Pattern like "node_modules/**" - match if path starts with prefix
             prefix = pattern[:-3]  # Remove trailing "/**"
             return path.startswith(prefix + "/") or path == prefix
         else:
-            # Other patterns with ** in the middle
-            # Convert ** to * for simple fnmatch (approximate)
+            # Pattern with ** in the middle, like "src/**/*.py"
+            # Split into prefix and suffix, and check both
+            parts = pattern.split("**/")
+            if len(parts) == 2:
+                prefix, suffix = parts
+                # Path must start with prefix (if present)
+                if prefix and not path.startswith(prefix):
+                    return False
+                # Get the part after the prefix
+                remaining = path[len(prefix) :] if prefix else path
+                # The suffix (e.g., "*.py") must match the end of the path
+                if suffix:
+                    # Could be at any depth, so check basename or any subpath
+                    return fnmatch.fnmatch(remaining, suffix) or fnmatch.fnmatch(
+                        remaining, f"*/{suffix}"
+                    )
+                return True
+            # Fallback: convert ** to * for approximate matching
             simple_pattern = pattern.replace("**", "*")
             return fnmatch.fnmatch(path, simple_pattern)
 
