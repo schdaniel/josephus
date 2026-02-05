@@ -8,9 +8,10 @@
 - **Reference issue numbers** - Always link commits and work to relevant issues
 
 ### Git Workflow
-- **Features in branches** - Never commit features directly to main
+- **ALL changes in branches** - Never commit directly to main. This includes features, bug fixes, hotfixes, documentation, and CI fixes. No exceptions.
 - **Branch naming**: `feature/<issue-number>-<short-description>` or `fix/<issue-number>-<short-description>`
-- **Test before merge** - Run all tests (`pytest tests/`) before pushing to main
+- **Always create PR** - Push branch and create PR, even for small changes
+- **Test before merge** - Run all tests (`pytest tests/`) and lints before merging
 - **Bugs as issues** - Always create GitHub issues for bugs discovered during development
 
 ### Before Starting Any Work
