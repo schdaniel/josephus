@@ -517,20 +517,37 @@ class TestEvaluationRunner:
     @pytest.mark.asyncio
     async def test_run_evaluation(self, eval_dataset: EvalDataset) -> None:
         """Test running evaluation."""
-        runner = EvaluationRunner(eval_dataset, quick=True, verbose=False)
-
-        # Mock the judge to avoid LLM calls
-        with patch.object(runner, "_judge", MagicMock()):
-            runner._judge = AsyncMock()
-            runner._judge.evaluate = AsyncMock(
-                return_value=JudgeScores(
-                    accuracy=4.0,
-                    completeness=4.0,
-                    clarity=4.0,
-                    hallucination_free=4.0,
-                )
+        # Create mock LLM provider to avoid needing real API key
+        mock_llm = AsyncMock()
+        mock_llm.generate = AsyncMock(
+            return_value=MagicMock(
+                content="<!-- FILE: docs/index.md -->\n# Generated Docs\n\nContent here.",
+                input_tokens=100,
+                output_tokens=50,
             )
-            runner._judge.close = AsyncMock()
+        )
+        mock_llm.close = AsyncMock()
+
+        # Create mock judge
+        mock_judge = MagicMock()
+        mock_judge.evaluate = AsyncMock(
+            return_value=JudgeScores(
+                accuracy=4.0,
+                completeness=4.0,
+                clarity=4.0,
+                hallucination_free=4.0,
+            )
+        )
+        mock_judge.close = AsyncMock()
+
+        # Patch DocumentationJudge to return our mock
+        with patch("josephus.eval.runner.DocumentationJudge", return_value=mock_judge):
+            runner = EvaluationRunner(
+                eval_dataset,
+                quick=True,
+                verbose=False,
+                llm_provider=mock_llm,
+            )
 
             results = await runner.run(repos=["test-repo"])
 
