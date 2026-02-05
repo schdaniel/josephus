@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from josephus import __version__
-from josephus.api.routes import health, webhooks
+from josephus.api.routes import api_v1, health, webhooks
 from josephus.core.config import get_settings
 
 
@@ -61,6 +61,7 @@ def create_app() -> FastAPI:
     # Routes
     app.include_router(health.router, tags=["health"])
     app.include_router(webhooks.router, prefix="/webhooks", tags=["webhooks"])
+    app.include_router(api_v1.router, prefix="/api/v1", tags=["api"])
 
     return app
 
