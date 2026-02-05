@@ -15,11 +15,14 @@ class TestWebhookSignatureVerification:
         secret = "test-secret"
 
         # Compute valid signature
-        signature = "sha256=" + hmac.new(
-            secret.encode("utf-8"),
-            payload,
-            hashlib.sha256,
-        ).hexdigest()
+        signature = (
+            "sha256="
+            + hmac.new(
+                secret.encode("utf-8"),
+                payload,
+                hashlib.sha256,
+            ).hexdigest()
+        )
 
         assert verify_webhook_signature(payload, signature, secret) is True
 
@@ -48,11 +51,14 @@ class TestWebhookSignatureVerification:
         import hmac
 
         # Sign with correct secret
-        signature = "sha256=" + hmac.new(
-            correct_secret.encode("utf-8"),
-            payload,
-            hashlib.sha256,
-        ).hexdigest()
+        signature = (
+            "sha256="
+            + hmac.new(
+                correct_secret.encode("utf-8"),
+                payload,
+                hashlib.sha256,
+            ).hexdigest()
+        )
 
         # Verify with wrong secret should fail
         assert verify_webhook_signature(payload, signature, wrong_secret) is False
@@ -67,11 +73,14 @@ class TestWebhookSignatureVerification:
         import hashlib
         import hmac
 
-        valid_signature = "sha256=" + hmac.new(
-            secret.encode("utf-8"),
-            payload,
-            hashlib.sha256,
-        ).hexdigest()
+        valid_signature = (
+            "sha256="
+            + hmac.new(
+                secret.encode("utf-8"),
+                payload,
+                hashlib.sha256,
+            ).hexdigest()
+        )
 
         # Both of these should take similar time (no short-circuit)
         # This is hard to test directly, but we ensure the function works
