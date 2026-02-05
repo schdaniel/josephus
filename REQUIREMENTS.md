@@ -553,19 +553,443 @@ Screen 6: Commit to Repo
 
 ---
 
-## 9. Success Metrics
+## 9. Evaluation Methodology
+
+### 9.1 What We Need to Measure
+
+| Dimension | Question | Why It Matters |
+|-----------|----------|----------------|
+| **Accuracy** | Is the generated doc factually correct? | Wrong docs are worse than no docs |
+| **Completeness** | Does it cover all user-facing features? | Missing features = support tickets |
+| **Relevance** | Does PR detection catch the right changes? | False negatives = stale docs |
+| **Clarity** | Is it understandable by target audience? | Jargon-free for non-technical users |
+| **Consistency** | Same style/tone across all pages? | Professional appearance |
+| **Freshness** | Are docs updated when code changes? | The core value prop |
+
+### 9.2 Evaluation Datasets
+
+**Golden Dataset (Manual Curation):**
+```
+eval/
+├── repos/                    # 10-20 curated open source repos
+│   ├── small-cli-tool/       # Simple: <50 files
+│   ├── medium-api/           # Medium: 50-200 files
+│   ├── large-monorepo/       # Large: 500+ files
+│   └── ...
+├── ground_truth/             # Human-written ideal docs
+│   ├── small-cli-tool/
+│   │   ├── expected_docs/    # What good docs look like
+│   │   └── annotations.json  # Feature coverage checklist
+│   └── ...
+├── pr_scenarios/             # PRs with known doc relevance
+│   ├── should_update/        # PRs that need doc changes
+│   ├── should_ignore/        # PRs that don't (refactoring, tests)
+│   └── labels.json           # Ground truth labels
+└── guidelines_variations/    # Different user configs to test
+```
+
+**Repo Selection Criteria:**
+- Mix of languages (Python, TypeScript, Go, Rust)
+- Mix of project types (CLI, API, library, web app)
+- Existing good documentation to compare against
+- Clear public API surface
+- Active development (for PR scenarios)
+
+**Candidate repos:**
+- `httpie/httpie` - CLI tool, excellent docs
+- `fastapi/fastapi` - API framework, great examples
+- `supabase/supabase` - Large, multi-component
+- `ollama/ollama` - Go CLI, clean API
+- Custom synthetic repos for edge cases
+
+### 9.3 Automated Evaluation Metrics
+
+**Documentation Quality:**
+
+| Metric | How to Measure | Target |
+|--------|----------------|--------|
+| **Coverage Score** | % of public APIs/features documented | > 90% |
+| **Accuracy Score** | LLM-as-judge comparing to ground truth | > 85% |
+| **Hallucination Rate** | Claims not supported by code | < 5% |
+| **Readability** | Flesch-Kincaid grade level | 8-10 (accessible) |
+| **Structure Score** | Correct headings, code blocks, links | > 95% |
+
+**PR Detection:**
+
+| Metric | How to Measure | Target |
+|--------|----------------|--------|
+| **Precision** | True positives / (True + False positives) | > 85% |
+| **Recall** | True positives / (True + False negatives) | > 95% |
+| **F1 Score** | Harmonic mean of precision/recall | > 90% |
+| **Latency** | Time from PR webhook to decision | < 30s |
+
+**LLM-as-Judge Prompt (for accuracy):**
+```
+You are evaluating AI-generated documentation against ground truth.
+
+<generated_doc>
+{generated}
+</generated_doc>
+
+<ground_truth>
+{expected}
+</ground_truth>
+
+<source_code>
+{code_context}
+</source_code>
+
+Rate the generated documentation on:
+1. Factual accuracy (1-5): Are all claims supported by the code?
+2. Completeness (1-5): Are all features from ground truth covered?
+3. Clarity (1-5): Would a non-technical user understand this?
+4. No hallucinations (1-5): Any invented features or incorrect behavior?
+
+Return JSON: {"accuracy": N, "completeness": N, "clarity": N, "hallucinations": N, "issues": [...]}
+```
+
+### 9.4 Human Evaluation
+
+**When to use:** Weekly during development, before major releases
+
+**Evaluation Protocol:**
+1. Generate docs for 5 repos from golden dataset
+2. 3 human reviewers score each (blind, randomized)
+3. Rubric: Accuracy, Completeness, Clarity, Would-you-use-it (1-5 each)
+4. Inter-rater reliability check (Krippendorff's alpha > 0.7)
+
+**Dogfooding:**
+- Generate docs for Josephus itself
+- Use them as our actual documentation
+- If we won't use our own output, it's not ready
+
+### 9.5 Regression Testing
+
+**On every PR to Josephus:**
+```yaml
+# .github/workflows/eval.yml
+eval-suite:
+  runs-on: ubuntu-latest
+  steps:
+    - name: Run eval on golden dataset
+      run: python -m josephus.eval --dataset eval/repos --quick
+
+    - name: Check metrics
+      run: |
+        python -m josephus.eval.check \
+          --coverage-min 0.85 \
+          --accuracy-min 0.80 \
+          --pr-f1-min 0.88
+
+    - name: Compare to baseline
+      run: python -m josephus.eval.compare --baseline main
+```
+
+**Nightly full evaluation:**
+- Full dataset (all repos, all PR scenarios)
+- Cost tracking (tokens used, $ spent)
+- Performance benchmarks (latency p50, p95, p99)
+
+### 9.6 Production Monitoring
+
+**Metrics to track (Logfire/Prometheus):**
+
+```python
+# Key metrics to instrument
+metrics = {
+    # Quality signals
+    "user_rating": Histogram,           # 1-5 stars from users
+    "regeneration_rate": Counter,       # How often users regenerate
+    "edit_rate": Gauge,                 # % of docs edited before commit
+
+    # PR detection
+    "pr_detection_decisions": Counter,  # Labels: relevant/not_relevant
+    "pr_false_positive_reports": Counter,  # User says "not relevant"
+    "pr_missed_reports": Counter,       # User says "should have updated"
+
+    # Performance
+    "generation_latency_seconds": Histogram,
+    "pr_analysis_latency_seconds": Histogram,
+    "tokens_used": Counter,             # Labels: model, task
+
+    # Errors
+    "generation_failures": Counter,     # Labels: error_type
+    "webhook_errors": Counter,
+}
+```
+
+**Alerts:**
+- Accuracy score drops > 10% week-over-week
+- Regeneration rate > 30% (users unhappy with output)
+- PR detection precision < 80%
+- p95 latency > 2 minutes
+
+### 9.7 A/B Testing Infrastructure
+
+**For testing prompt/model changes:**
+
+```python
+@feature_flag("doc_generation_v2")
+async def generate_docs(repo, config):
+    if is_in_experiment("doc_generation_v2", repo.owner_id):
+        return await generate_docs_v2(repo, config)
+    return await generate_docs_v1(repo, config)
+```
+
+**Experiment tracking:**
+- Variant assignment logged
+- All quality metrics segmented by variant
+- Statistical significance before rollout (p < 0.05)
+
+---
+
+## 10. Testing Infrastructure
+
+### 10.1 Test Pyramid
+
+```
+                    ┌───────────┐
+                    │    E2E    │  ← Few, slow, expensive
+                    │  (real    │    GitHub App + LLM calls
+                    │   GitHub) │
+                   ─┴───────────┴─
+                  ┌───────────────┐
+                  │  Integration  │  ← Mock GitHub, real LLM
+                  │   (mocked     │    or mock LLM responses
+                  │    GitHub)    │
+                 ─┴───────────────┴─
+                ┌───────────────────┐
+                │       Unit        │  ← Fast, no external deps
+                │  (pure functions) │    Repo analysis, parsing
+               ─┴───────────────────┴─
+```
+
+### 10.2 Test Categories
+
+**Unit Tests (pytest):**
+```python
+# tests/unit/test_repo_analyzer.py
+def test_file_filtering_respects_gitignore():
+    ...
+
+def test_token_counting_accuracy():
+    ...
+
+def test_secret_detection_finds_api_keys():
+    ...
+
+# tests/unit/test_pr_relevance.py
+def test_new_endpoint_is_relevant():
+    ...
+
+def test_test_file_changes_not_relevant():
+    ...
+```
+
+**Integration Tests (with mocks):**
+```python
+# tests/integration/test_doc_generation.py
+@pytest.fixture
+def mock_github():
+    return MockGitHubClient(repo_fixture="small-cli-tool")
+
+@pytest.fixture
+def mock_llm():
+    return MockLLMProvider(responses_file="fixtures/llm_responses.json")
+
+async def test_full_generation_flow(mock_github, mock_llm):
+    result = await generate_docs(repo="test/repo", config=default_config)
+    assert "## Getting Started" in result.files["index.md"]
+    assert result.files_count >= 3
+```
+
+**E2E Tests (real GitHub, staging):**
+```python
+# tests/e2e/test_github_app.py
+@pytest.mark.e2e
+@pytest.mark.slow
+async def test_installation_webhook():
+    # Uses real GitHub App in staging
+    ...
+
+@pytest.mark.e2e
+async def test_pr_creates_doc_commit():
+    # Creates real PR, checks for doc commit
+    ...
+```
+
+### 10.3 LLM Testing Strategy
+
+**Challenge:** LLM outputs are non-deterministic
+
+**Solutions:**
+
+1. **Snapshot testing with fuzzy matching:**
+```python
+def test_getting_started_structure():
+    result = generate_getting_started(repo)
+
+    # Check structure, not exact content
+    assert has_heading(result, "Installation")
+    assert has_heading(result, "Quick Start")
+    assert has_code_block(result, language="bash")
+```
+
+2. **Deterministic seed for reproducibility:**
+```python
+@pytest.fixture
+def deterministic_llm():
+    return LLMProvider(temperature=0, seed=42)
+```
+
+3. **Contract testing:**
+```python
+def test_llm_response_schema():
+    result = classify_pr_relevance(diff)
+
+    # Validate response structure
+    assert "relevant" in result
+    assert isinstance(result["relevant"], bool)
+    assert "reason" in result
+```
+
+4. **Mock responses for unit tests:**
+```python
+# fixtures/llm_responses.json
+{
+    "classify_pr:add_endpoint": {
+        "relevant": true,
+        "reason": "New public API endpoint added"
+    },
+    "classify_pr:refactor_internal": {
+        "relevant": false,
+        "reason": "Internal refactoring, no API changes"
+    }
+}
+```
+
+### 10.4 CI Pipeline
+
+```yaml
+# .github/workflows/ci.yml
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: ruff check .
+      - run: ruff format --check .
+      - run: mypy .
+
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install -e ".[dev]"
+      - run: pytest tests/unit -v --cov=josephus --cov-report=xml
+      - uses: codecov/codecov-action@v4
+
+  integration-tests:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+      redis:
+        image: redis:7
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install -e ".[dev]"
+      - run: pytest tests/integration -v
+    env:
+      DATABASE_URL: postgresql://localhost/test
+      REDIS_URL: redis://localhost
+
+  eval-quick:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install -e ".[dev]"
+      - run: python -m josephus.eval --quick --compare-baseline
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
+  e2e-tests:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      - run: pytest tests/e2e -v --timeout=300
+    env:
+      GITHUB_APP_ID: ${{ secrets.STAGING_APP_ID }}
+      GITHUB_APP_KEY: ${{ secrets.STAGING_APP_KEY }}
+```
+
+### 10.5 Local Development Testing
+
+```bash
+# Run unit tests (fast, no deps)
+pytest tests/unit -v
+
+# Run with coverage
+pytest tests/unit --cov=josephus --cov-report=html
+
+# Run integration tests (needs docker-compose up)
+docker-compose up -d postgres redis
+pytest tests/integration -v
+
+# Run single eval repo
+python -m josephus.eval --repo eval/repos/small-cli-tool --verbose
+
+# Run PR detection eval
+python -m josephus.eval.pr_detection --dataset eval/pr_scenarios
+```
+
+### 10.6 Test Data Management
+
+**Fixtures location:**
+```
+tests/
+├── fixtures/
+│   ├── repos/              # Small synthetic repos for unit tests
+│   │   ├── minimal/        # 3 files, simple structure
+│   │   └── with_secrets/   # For testing secret detection
+│   ├── llm_responses/      # Mocked LLM outputs
+│   ├── webhooks/           # Sample GitHub webhook payloads
+│   └── configs/            # Various .josephus.yml configs
+└── eval/                   # Larger evaluation dataset (git-lfs)
+```
+
+**Updating fixtures:**
+```bash
+# Record new LLM responses for mocking
+python -m josephus.test_utils.record_llm --scenario "new_endpoint"
+
+# Validate fixtures match current schemas
+pytest tests/fixtures/validate.py
+```
+
+---
+
+## 11. Success Metrics
 
 | Metric | Target (6 months) |
 |--------|-------------------|
 | Time to first docs | < 10 minutes |
+| Doc accuracy (LLM-judge) | > 85% |
 | Doc accuracy (user rating) | > 4/5 stars |
-| PR doc detection accuracy | > 90% |
+| PR detection F1 score | > 90% |
 | User retention (monthly) | > 60% |
+| Regeneration rate | < 20% |
 | Repos documented | 1,000+ |
 
 ---
 
-## 10. Competitive Positioning
+## 12. Competitive Positioning
 
 ```
                     │ Customer-Facing Focus
@@ -586,7 +1010,7 @@ Screen 6: Commit to Repo
 
 ---
 
-## Next Steps
+## 13. Next Steps
 
 1. [x] Review and refine these requirements
 2. [x] Research architecture patterns (see `ARCHITECTURE_PATTERNS.md`)
@@ -603,5 +1027,5 @@ Screen 6: Commit to Repo
 
 ---
 
-*Document version: 0.5*
+*Document version: 0.6*
 *Last updated: 2026-02-05*
