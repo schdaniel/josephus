@@ -1,0 +1,35 @@
+# Evaluation repositories
+# These repos are cloned for documentation generation evaluation
+
+repos:
+  # Small Python project - Static CMS
+  lektor:
+    url: https://github.com/lektor/lektor.git
+    language: python
+    size: small
+    description: "Static content management system"
+    docs_url: https://www.getlektor.com/docs/
+
+  # Small JavaScript project - Analytics
+  ackee:
+    url: https://github.com/electerious/Ackee.git
+    language: javascript
+    size: small
+    description: "Self-hosted analytics tool"
+    docs_url: https://docs.ackee.electerious.com/
+
+  # Small Go project - RSS Reader
+  miniflux:
+    url: https://github.com/miniflux/v2.git
+    language: go
+    size: small
+    description: "Minimalist feed reader"
+    docs_url: https://miniflux.app/docs/
+
+  # Medium Python project - Project Management
+  taiga:
+    url: https://github.com/taigaio/taiga-back.git
+    language: python
+    size: medium
+    description: "Agile project management platform"
+    docs_url: https://docs.taiga.io/
