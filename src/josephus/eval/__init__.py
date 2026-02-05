@@ -8,6 +8,7 @@ from josephus.eval.download import (
     load_repos_config,
     update_repos,
 )
+from josephus.eval.evaluate import evaluate_all, evaluate_docs
 from josephus.eval.generate import generate_all, generate_docs_for_repo
 from josephus.eval.judge import DocumentationJudge, evaluate_documentation
 from josephus.eval.metrics import (
@@ -35,6 +36,9 @@ __all__ = [
     "list_repos",
     "load_repos_config",
     "update_repos",
+    # Evaluate
+    "evaluate_all",
+    "evaluate_docs",
     # Generate
     "generate_all",
     "generate_docs_for_repo",

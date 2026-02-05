@@ -88,3 +88,5 @@ eval/repos/*
 !eval/repos/.gitkeep
 eval/ground_truth/*
 !eval/ground_truth/.gitkeep
+eval/generated/*
+!eval/generated/.gitkeep

@@ -1,14 +1,15 @@
 """Batch documentation generation for evaluation."""
 
+import asyncio
 import json
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
 
-from josephus.analyzer import LocalRepoAnalyzer, format_for_llm
+from josephus.analyzer import LocalRepoAnalyzer
 from josephus.eval.download import get_project_root, get_repos_dir, load_repos_config
-from josephus.generator import DocGenerator, GenerationConfig
-from josephus.llm import LLMProvider
+from josephus.generator import DocGenerator, GeneratedDocs, GenerationConfig
+from josephus.llm import ClaudeProvider, LLMProvider
 
 
 def get_output_dir(output_dir: Path | None = None) -> Path:
@@ -20,7 +21,7 @@ def get_output_dir(output_dir: Path | None = None) -> Path:
     return output_dir
 
 
-def generate_docs_for_repo(
+async def generate_docs_for_repo(
     repo_path: Path,
     repo_name: str,
     output_dir: Path,
@@ -39,74 +40,62 @@ def generate_docs_for_repo(
 
     print(f"    Files: {len(analysis.files)}, Tokens: {analysis.total_tokens}")
 
-    # Format for LLM
-    context = format_for_llm(analysis)
-
     # Generate documentation
     print(f"  Generating docs for {repo_name}...")
-    generator = DocGenerator(llm_provider=llm_provider, config=config)
-    result = generator.generate(context)
+    generator = DocGenerator(llm_provider)
+    result = await generator.generate(analysis, config)
 
     # Save output
     repo_output_dir = output_dir / repo_name
     repo_output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Save the generated docs as JSON
-    output_file = repo_output_dir / "docs.json"
-    output_data = {
+    # Save each generated doc file
+    for file_path, content in result.files.items():
+        output_file = repo_output_dir / file_path
+        output_file.parent.mkdir(parents=True, exist_ok=True)
+        output_file.write_text(content)
+
+    # Save metadata
+    metadata_file = repo_output_dir / "metadata.json"
+    metadata = {
         "generated_at": datetime.now(UTC).isoformat(),
         "repo_name": repo_name,
         "files_analyzed": len(analysis.files),
         "tokens_analyzed": analysis.total_tokens,
-        "docs": result.model_dump(),
+        "docs_generated": result.total_files,
+        "total_chars": result.total_chars,
+        "llm_input_tokens": result.llm_response.input_tokens,
+        "llm_output_tokens": result.llm_response.output_tokens,
     }
 
-    with open(output_file, "w") as f:
-        json.dump(output_data, f, indent=2)
+    with open(metadata_file, "w") as f:
+        json.dump(metadata, f, indent=2)
 
-    # Also save as markdown for easy viewing
-    md_file = repo_output_dir / "index.md"
-    md_content = _format_docs_as_markdown(result)
-    md_file.write_text(md_content)
-
-    print(f"  {repo_name}: docs saved to {repo_output_dir}")
+    print(f"  {repo_name}: {result.total_files} docs saved to {repo_output_dir}")
 
     return {
         "repo_name": repo_name,
         "files_analyzed": len(analysis.files),
         "tokens_analyzed": analysis.total_tokens,
+        "docs_generated": result.total_files,
         "output_dir": str(repo_output_dir),
         "success": True,
     }
 
 
-def _format_docs_as_markdown(result) -> str:
+def _format_docs_as_markdown(result: GeneratedDocs) -> str:
     """Format documentation result as markdown."""
     lines = []
 
-    # Main overview
-    if hasattr(result, "overview") and result.overview:
-        lines.append("# Overview\n")
-        lines.append(result.overview)
-        lines.append("\n")
-
-    # Sections
-    if hasattr(result, "sections") and result.sections:
-        for section in result.sections:
-            lines.append(f"## {section.title}\n")
-            lines.append(section.content)
-            lines.append("\n")
-
-    # API reference
-    if hasattr(result, "api_reference") and result.api_reference:
-        lines.append("## API Reference\n")
-        lines.append(result.api_reference)
-        lines.append("\n")
+    for file_path, content in result.files.items():
+        lines.append(f"# {file_path}\n")
+        lines.append(content)
+        lines.append("\n---\n")
 
     return "\n".join(lines)
 
 
-def generate_all(
+async def generate_all_async(
     repos_dir: Path | None = None,
     output_dir: Path | None = None,
     config_path: Path | None = None,
@@ -152,7 +141,7 @@ def generate_all(
         return {}
 
     # Initialize LLM provider
-    llm_provider = LLMProvider(model=model)
+    llm_provider = ClaudeProvider(model=model)
 
     # Generation config
     gen_config = GenerationConfig()
@@ -161,7 +150,7 @@ def generate_all(
     try:
         for name, repo_path in available_repos.items():
             try:
-                results[name] = generate_docs_for_repo(
+                results[name] = await generate_docs_for_repo(
                     repo_path=repo_path,
                     repo_name=name,
                     output_dir=output_dir,
@@ -176,7 +165,7 @@ def generate_all(
                     "error": str(e),
                 }
     finally:
-        llm_provider.close()
+        await llm_provider.close()
 
     # Summary
     successful = sum(1 for r in results.values() if r.get("success"))
@@ -184,6 +173,25 @@ def generate_all(
     print(f"\nSummary: {successful} succeeded, {failed} failed")
 
     return results
+
+
+def generate_all(
+    repos_dir: Path | None = None,
+    output_dir: Path | None = None,
+    config_path: Path | None = None,
+    repos: list[str] | None = None,
+    model: str = "claude-sonnet-4-20250514",
+) -> dict[str, dict]:
+    """Sync wrapper for generate_all_async."""
+    return asyncio.run(
+        generate_all_async(
+            repos_dir=repos_dir,
+            output_dir=output_dir,
+            config_path=config_path,
+            repos=repos,
+            model=model,
+        )
+    )
 
 
 def main() -> int:
