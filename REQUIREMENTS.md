@@ -28,27 +28,32 @@ Josephus transforms code repositories into living, customer-facing documentation
 | [DocuWriter.ai](https://docuwriter.ai/) | Auto-generates from source code | Developer docs focus, not customer-facing |
 | [Repomix](https://repomix.com/) | Packs codebase for AI context | Tool, not a complete solution |
 
-### Documentation Platforms (Foundations)
+### Documentation Platforms (User's Choice)
 
-| Platform | License | Best For | Considerations |
-|----------|---------|----------|----------------|
-| **Docusaurus** | MIT (Free) | Full control, React teams | Self-host, requires React knowledge |
-| **GitBook** | Freemium | Mixed teams, collaboration | Per-seat pricing, less customizable |
-| **Mintlify** | Commercial | Beautiful API docs | $150+/mo, opinionated structure |
-| **MkDocs** | MIT (Free) | Python teams, simplicity | Less modern UI, limited interactivity |
-| **Nextra** | MIT (Free) | Next.js teams | Lighter than Docusaurus |
+We generate markdown - users render with their preferred platform:
 
-### Recommendation: Build on Docusaurus
+| Platform | Best For | Notes |
+|----------|----------|-------|
+| **Docusaurus** | React teams, versioned docs | Most popular, feature-rich |
+| **MkDocs** | Python teams | Simple, Material theme popular |
+| **Nextra** | Next.js teams | Lightweight |
+| **GitBook** | Non-technical editors | WYSIWYG option |
+| **Mintlify** | Beautiful API docs | Paid, polished |
+| **GitHub Pages** | Zero setup | Raw markdown rendering |
 
-**Rationale:**
-1. **Free & open source** - No licensing costs or vendor lock-in
-2. **Battle-tested** - Powers React Native, Supabase, Figma docs
-3. **Versioning built-in** - Critical for product documentation
-4. **MDX support** - Markdown + React components
-5. **Large ecosystem** - Plugins, themes, community support
-6. **SEO optimized** - Important for customer-facing docs
+### Our Approach: Platform-Agnostic Markdown
 
-**Alternative consideration:** Nextra if we want a lighter footprint with Next.js.
+**We are NOT a docs platform.** We are a markdown generation engine.
+
+**What we output:**
+- Standard markdown files with optional frontmatter
+- Mermaid diagrams (widely supported)
+- Compatible folder structure
+
+**What users do:**
+- Plug our output into any docs platform
+- Use their existing docs infrastructure
+- Full control over rendering/hosting
 
 ---
 
@@ -247,10 +252,10 @@ style:
 │  └──────────────────────────────────────────────────────────────┘      │
 │                                                                          │
 │  ┌──────────────────────────────────────────────────────────────┐      │
-│  │                   Git-Based Doc Storage                       │      │
-│  │  - Docs committed to user's repo (/docs or configurable)     │      │
-│  │  - Docusaurus config committed alongside                     │      │
-│  │  - User deploys via GitHub Pages / Vercel / Netlify          │      │
+│  │                   Output: Markdown to Git                     │      │
+│  │  - Standard markdown + frontmatter                           │      │
+│  │  - Committed to user's repo (/docs or configurable path)     │      │
+│  │  - User renders with platform of choice                      │      │
 │  └──────────────────────────────────────────────────────────────┘      │
 │                                                                          │
 └─────────────────────────────────────────────────────────────────────────┘
@@ -269,8 +274,8 @@ style:
 | **Database** | PostgreSQL | Reliable, JSON support, full-text search |
 | **Vector Store** | pgvector or Pinecone | RAG for codebase understanding |
 | **Queue** | Redis + BullMQ | Job processing for doc generation |
-| **Doc Platform** | Docusaurus | See Section 2 recommendation |
 | **LLM Provider** | Multi-provider | Claude, GPT-4, Gemini (configurable) |
+| **Output Format** | Markdown + frontmatter | Platform-agnostic, universal |
 | **Doc Storage** | Git (user's repo) | Docs as code, no vendor lock-in |
 | **API Hosting** | Vercel/Railway | Easy deployment, scalable |
 
@@ -382,7 +387,7 @@ Screen 6: Commit to Repo
 - [ ] Basic doc generation (README → Getting Started)
 - [ ] Manual trigger only (no CI webhooks yet)
 - [ ] Single LLM provider (Claude)
-- [ ] Commit Docusaurus docs to user's repo via PR
+- [ ] Commit markdown docs to user's repo via PR
 
 ### Phase 2: Core Product
 - [ ] Full onboarding wizard
@@ -393,12 +398,11 @@ Screen 6: Commit to Repo
 - [ ] Multi-provider LLM support
 
 ### Phase 3: Scale & Polish
-- [ ] Custom domains
 - [ ] Team collaboration features
-- [ ] Doc versioning
-- [ ] Analytics (doc usage, coverage)
+- [ ] Doc versioning support (version-aware generation)
+- [ ] Analytics (generation stats, PR coverage)
 - [ ] API for programmatic access
-- [ ] CLI tool for local preview
+- [ ] CLI tool for local generation/preview
 
 ### Phase 4: Enterprise
 - [ ] Self-hosted option
@@ -418,7 +422,7 @@ Screen 6: Commit to Repo
 4. **Localization?** Auto-translate docs to other languages?
 
 ### Technical Questions
-1. **Docusaurus vs custom?** Build on Docusaurus or custom doc renderer?
+1. ~~**Docusaurus vs custom?**~~ **DECIDED:** Neither - output platform-agnostic markdown
 2. **Vector DB choice?** pgvector (simpler) vs Pinecone (managed)?
 3. ~~**Doc storage?**~~ **DECIDED:** Git-based - docs committed to user's repo
 4. **Real-time vs batch?** Generate on-demand or pre-compute?
@@ -473,5 +477,5 @@ Screen 6: Commit to Repo
 
 ---
 
-*Document version: 0.3*
+*Document version: 0.4*
 *Last updated: 2026-02-05*
