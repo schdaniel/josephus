@@ -6,6 +6,12 @@ from josephus.generator.docs import (
     GenerationConfig,
     generate_docs,
 )
+from josephus.generator.planning import (
+    DocPlanner,
+    DocStructurePlan,
+    PlannedFile,
+    PlannedSection,
+)
 from josephus.generator.prompts import (
     SYSTEM_PROMPT,
     build_generation_prompt,
@@ -14,8 +20,12 @@ from josephus.generator.prompts import (
 
 __all__ = [
     "DocGenerator",
+    "DocPlanner",
+    "DocStructurePlan",
     "GeneratedDocs",
     "GenerationConfig",
+    "PlannedFile",
+    "PlannedSection",
     "SYSTEM_PROMPT",
     "build_generation_prompt",
     "build_refinement_prompt",

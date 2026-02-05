@@ -7,6 +7,7 @@ from dataclasses import dataclass
 import logfire
 
 from josephus.analyzer import RepoAnalysis, format_for_llm
+from josephus.generator.planning import DocPlanner, DocStructurePlan
 from josephus.generator.prompts import SYSTEM_PROMPT, build_generation_prompt
 from josephus.llm import LLMProvider, LLMResponse
 
@@ -17,6 +18,7 @@ class GeneratedDocs:
 
     files: dict[str, str]  # path -> content
     llm_response: LLMResponse
+    structure_plan: DocStructurePlan | None = None
     total_files: int = 0
     total_chars: int = 0
 
@@ -35,6 +37,9 @@ class GenerationConfig:
     # Output configuration
     output_dir: str = "docs"
     include_index: bool = True
+
+    # Planning
+    plan_structure: bool = True  # Whether to plan structure before generating
 
     # LLM parameters
     max_tokens: int = 16384
@@ -77,18 +82,37 @@ class DocGenerator:
             repo=analysis.repository.full_name,
             files_in_analysis=len(analysis.files),
             guidelines_length=len(config.guidelines),
+            plan_structure=config.plan_structure,
         )
 
-        # Format repository for LLM
+        # Step 1: Optionally plan structure first
+        structure_plan: DocStructurePlan | None = None
+        structure_plan_context = ""
+
+        if config.plan_structure:
+            planner = DocPlanner(self.llm)
+            structure_plan = await planner.plan(
+                analysis=analysis,
+                guidelines=config.guidelines,
+            )
+            structure_plan_context = structure_plan.to_prompt_context()
+            logfire.info(
+                "Structure plan created",
+                files_planned=structure_plan.total_files,
+                file_paths=structure_plan.file_paths,
+            )
+
+        # Step 2: Format repository for LLM
         repo_context = format_for_llm(analysis, config.guidelines)
 
-        # Build prompt
+        # Step 3: Build prompt (with or without structure plan)
         prompt = build_generation_prompt(
             repo_context=repo_context,
             guidelines=config.guidelines,
+            structure_plan=structure_plan_context,
         )
 
-        # Generate documentation
+        # Step 4: Generate documentation
         response = await self.llm.generate(
             prompt=prompt,
             system=SYSTEM_PROMPT,
@@ -96,7 +120,7 @@ class DocGenerator:
             temperature=config.temperature,
         )
 
-        # Parse response
+        # Step 5: Parse response
         files = self._parse_response(response.content, config.output_dir)
 
         logfire.info(
@@ -107,7 +131,11 @@ class DocGenerator:
             output_tokens=response.output_tokens,
         )
 
-        return GeneratedDocs(files=files, llm_response=response)
+        return GeneratedDocs(
+            files=files,
+            llm_response=response,
+            structure_plan=structure_plan,
+        )
 
     def _parse_response(self, content: str, output_dir: str) -> dict[str, str]:
         """Parse LLM response to extract documentation files.
