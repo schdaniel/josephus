@@ -35,31 +35,29 @@ Technical but approachable. Use clear language.
 - Include code examples in Python and JavaScript
 - Document all error codes
 - Provide authentication examples
-""",
-            ".josephus/scope.md": """
-# Scope
 
-## Include
+## Scope
+
+### Include
 - All public REST API endpoints
 - Authentication flows
 - SDK usage examples
 - Error handling patterns
 
-## Exclude
+### Exclude
 - Internal microservice APIs
 - Deprecated endpoints
 - Admin-only endpoints
-""",
-            ".josephus/style.md": """
-# Style Preferences
 
-## Code Examples
+## Style
+
+### Code Examples
 Prefer TypeScript for frontend examples and Python for backend.
 
-## Diagrams
+### Diagrams
 Use Mermaid for sequence diagrams and flowcharts.
 
-## Format
+### Format
 - Use tables for parameter documentation
 - Include request/response examples
 - Add links to related endpoints
@@ -85,14 +83,14 @@ Use Mermaid for sequence diagrams and flowcharts.
         assert config.create_pr is True
         assert config.branch_prefix == "docs/auto"
 
-        # Verify natural language content loaded
+        # Verify natural language content loaded (all in guidelines now)
         assert "Software developers" in config.guidelines
-        assert "public REST API" in config.scope
-        assert "TypeScript" in config.style
+        assert "public REST API" in config.guidelines
+        assert "TypeScript" in config.guidelines
 
     @pytest.mark.asyncio
     async def test_load_partial_config(self) -> None:
-        """Test loading config with only some files present."""
+        """Test loading config with only guidelines present."""
         mock_client = AsyncMock()
 
         files = {
@@ -121,8 +119,6 @@ Keep it simple and include lots of examples.
 
         # Verify guidelines loaded
         assert "beginners" in config.guidelines
-        assert config.scope == ""
-        assert config.style == ""
 
     @pytest.mark.asyncio
     async def test_load_no_config(self) -> None:
@@ -141,16 +137,18 @@ Keep it simple and include lots of examples.
         assert config.output_dir == "docs"
         assert config.output_format == "markdown"
         assert config.guidelines == ""
-        assert config.scope == ""
-        assert config.style == ""
 
     @pytest.mark.asyncio
     async def test_config_to_prompt_context(self) -> None:
         """Test converting config to LLM prompt context."""
         config = RepoConfig(
-            guidelines="Write for developers",
-            scope="All public APIs",
-            style="Use Python examples",
+            guidelines="""Write for developers
+
+## Scope
+All public APIs
+
+## Style
+Use Python examples""",
         )
 
         context = config.to_prompt_context()
@@ -159,7 +157,7 @@ Keep it simple and include lots of examples.
         assert "Write for developers" in context
         assert "## Scope" in context
         assert "All public APIs" in context
-        assert "## Style Preferences" in context
+        assert "## Style" in context
         assert "Use Python examples" in context
 
     @pytest.mark.asyncio

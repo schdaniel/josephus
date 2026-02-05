@@ -159,9 +159,8 @@ create_pr: true
 
 Write clear, concise documentation for developers.
 Use code examples where appropriate.
-""",
-            ".josephus/scope.md": """
-# Scope
+
+## Scope
 
 Include all public APIs and their usage examples.
 Exclude internal implementation details.

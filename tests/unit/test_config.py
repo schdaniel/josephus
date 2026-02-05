@@ -47,8 +47,6 @@ class TestRepoConfig:
         config = RepoConfig()
 
         assert config.guidelines == ""
-        assert config.scope == ""
-        assert config.style == ""
         assert config.output_dir == "docs"
         assert config.create_pr is True
 
@@ -56,14 +54,12 @@ class TestRepoConfig:
         """Test configuration with all fields."""
         config = RepoConfig(
             config=DeterministicConfig(output_dir="api-docs"),
-            guidelines="Write for developers",
-            scope="All public APIs",
-            style="Use TypeScript examples",
+            guidelines="Write for developers\n\n## Scope\nAll public APIs\n\n## Style\nUse TypeScript examples",
         )
 
-        assert config.guidelines == "Write for developers"
-        assert config.scope == "All public APIs"
-        assert config.style == "Use TypeScript examples"
+        assert "Write for developers" in config.guidelines
+        assert "All public APIs" in config.guidelines
+        assert "Use TypeScript examples" in config.guidelines
         assert config.output_dir == "api-docs"
 
     def test_to_prompt_context_empty(self) -> None:
@@ -81,11 +77,17 @@ class TestRepoConfig:
         assert "Write for beginners" in context
 
     def test_to_prompt_context_full(self) -> None:
-        """Test prompt context with all fields."""
+        """Test prompt context with comprehensive guidelines."""
         config = RepoConfig(
-            guidelines="Write for developers",
-            scope="All public APIs\nExclude internal utilities",
-            style="Use Python examples\nInclude Mermaid diagrams",
+            guidelines="""Write for developers
+
+## Scope
+All public APIs
+Exclude internal utilities
+
+## Style
+Use Python examples
+Include Mermaid diagrams""",
         )
         context = config.to_prompt_context()
 
@@ -93,7 +95,7 @@ class TestRepoConfig:
         assert "Write for developers" in context
         assert "## Scope" in context
         assert "All public APIs" in context
-        assert "## Style Preferences" in context
+        assert "## Style" in context
         assert "Use Python examples" in context
 
     def test_convenience_accessors(self) -> None:
@@ -182,9 +184,14 @@ class TestLoadRepoConfig:
 
         files = {
             ".josephus/config.yml": "output_dir: api-docs",
-            ".josephus/guidelines.md": "# Guidelines\nWrite for developers",
-            ".josephus/scope.md": "# Scope\nAll public APIs",
-            ".josephus/style.md": "# Style\nUse TypeScript",
+            ".josephus/guidelines.md": """# Guidelines
+Write for developers
+
+## Scope
+All public APIs
+
+## Style
+Use TypeScript""",
         }
 
         async def mock_get_file(**kwargs: object) -> str | None:
@@ -202,12 +209,12 @@ class TestLoadRepoConfig:
 
         assert config.output_dir == "api-docs"
         assert "Write for developers" in config.guidelines
-        assert "All public APIs" in config.scope
-        assert "Use TypeScript" in config.style
+        assert "All public APIs" in config.guidelines
+        assert "Use TypeScript" in config.guidelines
 
     @pytest.mark.asyncio
     async def test_load_config_partial_files(self) -> None:
-        """Test loading config with only some files present."""
+        """Test loading config with only guidelines present."""
         mock_client = AsyncMock()
 
         files = {
@@ -229,8 +236,6 @@ class TestLoadRepoConfig:
 
         assert config.output_dir == "docs"  # Default
         assert config.guidelines == "Just some guidelines"
-        assert config.scope == ""
-        assert config.style == ""
 
     @pytest.mark.asyncio
     async def test_load_config_no_files(self) -> None:
@@ -248,8 +253,6 @@ class TestLoadRepoConfig:
         assert isinstance(config, RepoConfig)
         assert config.output_dir == "docs"
         assert config.guidelines == ""
-        assert config.scope == ""
-        assert config.style == ""
 
     @pytest.mark.asyncio
     async def test_load_config_with_ref(self) -> None:
