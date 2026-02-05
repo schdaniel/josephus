@@ -3,9 +3,7 @@
 Configuration structure:
     .josephus/
         config.yml       # Deterministic settings (output_dir, format, etc.)
-        guidelines.md    # Natural language documentation guidelines
-        scope.md         # What to include/exclude in documentation
-        style.md         # Style preferences (code examples, diagrams)
+        guidelines.md    # Natural language documentation guidelines (includes scope, structure, style)
 """
 
 import contextlib
@@ -19,8 +17,6 @@ from josephus.github import GitHubClient
 CONFIG_DIR = ".josephus"
 CONFIG_FILE = "config.yml"
 GUIDELINES_FILE = "guidelines.md"
-SCOPE_FILE = "scope.md"
-STYLE_FILE = "style.md"
 
 
 class DeterministicConfig(BaseModel):
@@ -48,7 +44,7 @@ class RepoConfig(BaseModel):
     """Repository-level configuration for documentation generation.
 
     Combines deterministic settings from config.yml with natural language
-    content from markdown files.
+    content from guidelines.md.
     """
 
     # Deterministic settings
@@ -57,18 +53,10 @@ class RepoConfig(BaseModel):
         description="Deterministic configuration settings",
     )
 
-    # Natural language content from markdown files
+    # Natural language content from guidelines.md
     guidelines: str = Field(
         default="",
-        description="Documentation guidelines from guidelines.md",
-    )
-    scope: str = Field(
-        default="",
-        description="Scope description from scope.md",
-    )
-    style: str = Field(
-        default="",
-        description="Style preferences from style.md",
+        description="Documentation guidelines from guidelines.md (includes scope, structure, style)",
     )
 
     def to_prompt_context(self) -> str:
@@ -77,18 +65,9 @@ class RepoConfig(BaseModel):
         Returns:
             Formatted string containing all configuration for LLM context.
         """
-        sections = []
-
         if self.guidelines:
-            sections.append(f"## Documentation Guidelines\n\n{self.guidelines}")
-
-        if self.scope:
-            sections.append(f"## Scope\n\n{self.scope}")
-
-        if self.style:
-            sections.append(f"## Style Preferences\n\n{self.style}")
-
-        return "\n\n".join(sections) if sections else ""
+            return f"## Documentation Guidelines\n\n{self.guidelines}"
+        return ""
 
     @property
     def output_dir(self) -> str:
@@ -148,9 +127,7 @@ async def load_repo_config(
 
     Looks for configuration in .josephus/ directory:
     - config.yml for deterministic settings
-    - guidelines.md for documentation guidelines
-    - scope.md for scope description
-    - style.md for style preferences
+    - guidelines.md for documentation guidelines (includes scope, structure, style)
 
     Args:
         github_client: GitHub API client.
@@ -171,22 +148,14 @@ async def load_repo_config(
         with contextlib.suppress(ValueError):
             config = parse_deterministic_config(config_content)
 
-    # Load natural language files
+    # Load guidelines
     guidelines = await _get_file_content(
         github_client, installation_id, owner, repo, f"{CONFIG_DIR}/{GUIDELINES_FILE}", ref
-    )
-    scope = await _get_file_content(
-        github_client, installation_id, owner, repo, f"{CONFIG_DIR}/{SCOPE_FILE}", ref
-    )
-    style = await _get_file_content(
-        github_client, installation_id, owner, repo, f"{CONFIG_DIR}/{STYLE_FILE}", ref
     )
 
     return RepoConfig(
         config=config,
         guidelines=guidelines or "",
-        scope=scope or "",
-        style=style or "",
     )
 
 
