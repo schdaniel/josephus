@@ -51,7 +51,7 @@ class TestGitHubAuth:
         # Decode without verification to check structure
         decoded = jwt.decode(token, options={"verify_signature": False})
 
-        assert decoded["iss"] == TEST_APP_ID
+        assert decoded["iss"] == str(TEST_APP_ID)
         assert "iat" in decoded
         assert "exp" in decoded
 
@@ -76,7 +76,7 @@ class TestGitHubAuth:
 
         # Should not raise
         decoded = jwt.decode(token, public_pem, algorithms=["RS256"])
-        assert decoded["iss"] == TEST_APP_ID
+        assert decoded["iss"] == str(TEST_APP_ID)
 
     def test_missing_credentials_raises(self) -> None:
         """Test that missing credentials raises ValueError."""

@@ -56,7 +56,7 @@ class GitHubAuth:
         payload = {
             "iat": now - 60,  # Issued 60 seconds ago (clock drift tolerance)
             "exp": now + (9 * 60),  # Expires in 9 minutes
-            "iss": self.app_id,
+            "iss": str(self.app_id),  # JWT iss must be a string
         }
 
         return jwt.encode(payload, self.private_key, algorithm="RS256")

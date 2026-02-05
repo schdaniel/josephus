@@ -229,16 +229,10 @@ class FileFilter:
         """Check if path matches a glob pattern."""
         # Handle ** for recursive matching
         if "**" in pattern:
-            # Convert ** to work with fnmatch
-            # e.g., "node_modules/**" matches "node_modules/foo/bar.js"
-            parts = pattern.split("**")
-            if len(parts) == 2:
-                prefix, suffix = parts
-                if path.startswith(prefix.rstrip("/")):
-                    remaining = path[len(prefix.rstrip("/")) :]
-                    if not suffix or fnmatch.fnmatch(remaining, "*" + suffix):
-                        return True
-            return False
+            # Use PurePosixPath.match for patterns with **
+            # This handles patterns like "**/generated/**", "node_modules/**", etc.
+            path_obj = PurePosixPath(path)
+            return path_obj.match(pattern)
         else:
             return fnmatch.fnmatch(path, pattern)
 
