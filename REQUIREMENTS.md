@@ -60,25 +60,26 @@ Josephus transforms code repositories into living, customer-facing documentation
 ┌─────────────────────────────────────────────────────────────────┐
 │                     ONBOARDING FLOW                              │
 ├─────────────────────────────────────────────────────────────────┤
-│  1. GitHub OAuth  →  2. Select Repo  →  3. Configure Guidelines │
+│  1. Install App  →  2. Select Repo  →  3. Configure Guidelines  │
 │                                                │                 │
 │                                                ▼                 │
 │  6. Review & Edit  ←  5. Generate Docs  ←  4. Analyze Codebase │
 │         │                                                        │
 │         ▼                                                        │
-│  7. Commit to Repo (PR)  →  8. Install GitHub App (CI)          │
+│  7. Commit to Repo (PR)  →  Done! (CI already active)           │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
 **Steps:**
-1. **GitHub Integration** - OAuth flow to connect account
-2. **Repository Selection** - Choose repo(s) to document
+1. **Install GitHub App** - Single integration: user auth + repo access + webhooks
+2. **Repository Selection** - Choose repo(s) to document from installed repos
 3. **Configuration** - Natural language guidelines (see 3.4)
 4. **Codebase Analysis** - AI scans and understands the codebase
 5. **Documentation Generation** - Creates initial doc structure
 6. **Review & Edit** - User reviews, edits, approves
 7. **Commit to Repo** - PR with docs committed to `/docs` folder
-8. **CI Installation** - Install GitHub App for PR monitoring
+
+*Note: CI/webhooks are active immediately after app installation - no separate step needed.*
 
 **Deployment (user's choice):**
 - GitHub Pages (built-in, free)
@@ -221,8 +222,7 @@ style:
 │  ┌──────────────────────────────────────────────────────────────┐      │
 │  │                        API Layer                              │      │
 │  │  - REST/GraphQL API                                          │      │
-│  │  - GitHub OAuth                                              │      │
-│  │  - Webhook handlers                                          │      │
+│  │  - GitHub App (auth + webhooks)                              │      │
 │  └──────────────────────────────┬───────────────────────────────┘      │
 │                                 │                                       │
 │         ┌───────────────────────┼───────────────────────┐              │
@@ -274,11 +274,13 @@ style:
 | **Doc Storage** | Git (user's repo) | Docs as code, no vendor lock-in |
 | **API Hosting** | Vercel/Railway | Easy deployment, scalable |
 
-### 5.2 GitHub Integration
+### 5.2 GitHub Integration (App Only)
+
+Single GitHub App handles everything: user authentication, repo access, and webhooks.
 
 **GitHub App Permissions Required:**
-- `contents: read` - Read repository files
-- `pull_requests: write` - Comment on and modify PRs
+- `contents: write` - Read repo files, commit doc updates
+- `pull_requests: write` - Create PRs, add comments and labels
 - `metadata: read` - Repository metadata
 - `checks: write` - Create check runs for doc status
 
@@ -286,6 +288,12 @@ style:
 - `pull_request` - opened, synchronize, closed
 - `push` - to main/master (for doc site rebuilds)
 - `installation` - app installed/uninstalled
+
+**Why App-only (no separate OAuth):**
+- Single installation flow for users
+- App can authenticate users via built-in OAuth
+- Webhooks work immediately after install
+- Cleaner permissions model
 
 ### 5.3 LLM Requirements
 
@@ -306,7 +314,7 @@ style:
 
 ### 5.4 Security Requirements
 
-- [ ] OAuth tokens encrypted at rest
+- [ ] GitHub App tokens encrypted at rest
 - [ ] No storage of source code (process in memory, discard)
 - [ ] Audit logging for all actions
 - [ ] SOC 2 compliance path (if B2B SaaS)
@@ -321,10 +329,10 @@ style:
 
 ```
 Screen 1: Landing
-├── "Connect GitHub" CTA
+├── "Install Josephus" CTA → GitHub App installation flow
 │
 Screen 2: Repository Selection
-├── List connected repos
+├── List repos where app is installed
 ├── Search/filter
 ├── Multi-select support
 │
@@ -344,12 +352,12 @@ Screen 5: Review Generated Docs
 ├── Edit inline
 ├── Approve/regenerate per section
 │
-Screen 6: Commit & Setup CI
+Screen 6: Commit to Repo
 ├── Preview PR with docs changes
 ├── Choose target branch / folder path
 ├── Create PR button
-├── Install GitHub App for ongoing PR monitoring
 ├── (Optional) Guide for GitHub Pages / Vercel setup
+├── Done! CI already active from app installation
 ```
 
 ### 6.2 PR Experience
@@ -369,10 +377,10 @@ Screen 6: Commit & Setup CI
 ## 7. Development Phases
 
 ### Phase 1: Foundation (MVP)
-- [ ] GitHub OAuth integration
+- [ ] GitHub App integration (auth + repo access)
 - [ ] Single repo onboarding
 - [ ] Basic doc generation (README → Getting Started)
-- [ ] Manual trigger only (no CI)
+- [ ] Manual trigger only (no CI webhooks yet)
 - [ ] Single LLM provider (Claude)
 - [ ] Commit Docusaurus docs to user's repo via PR
 
@@ -380,7 +388,7 @@ Screen 6: Commit & Setup CI
 - [ ] Full onboarding wizard
 - [ ] Comprehensive doc generation
 - [ ] Natural language configuration
-- [ ] GitHub App for PR detection
+- [ ] PR webhook handling (auto-detect doc-relevant changes)
 - [ ] Auto-commit doc updates to PRs
 - [ ] Multi-provider LLM support
 
@@ -465,5 +473,5 @@ Screen 6: Commit & Setup CI
 
 ---
 
-*Document version: 0.2*
+*Document version: 0.3*
 *Last updated: 2026-02-05*
