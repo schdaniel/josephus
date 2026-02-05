@@ -9,6 +9,7 @@ from typing import Any
 
 import logfire
 
+from josephus.analyzer import LocalRepoAnalyzer
 from josephus.eval.judge import DocumentationJudge
 from josephus.eval.metrics import (
     DocumentationMetrics,
@@ -19,6 +20,8 @@ from josephus.eval.metrics import (
     calculate_readability,
     calculate_structure_score,
 )
+from josephus.generator import DocGenerator, GenerationConfig
+from josephus.llm import LLMProvider, get_provider
 
 
 @dataclass
@@ -82,6 +85,9 @@ class EvaluationRunner:
         dataset: EvalDataset,
         quick: bool = False,
         verbose: bool = False,
+        llm_provider: LLMProvider | None = None,
+        guidelines: str = "",
+        output_dir: str = "docs",
     ) -> None:
         """Initialize the runner.
 
@@ -89,11 +95,19 @@ class EvaluationRunner:
             dataset: Evaluation dataset
             quick: If True, run quick evaluation (fewer samples)
             verbose: If True, print detailed progress
+            llm_provider: LLM provider for doc generation (uses default if not provided)
+            guidelines: Documentation guidelines to use
+            output_dir: Output directory for generated docs
         """
         self.dataset = dataset
         self.quick = quick
         self.verbose = verbose
+        self.guidelines = guidelines
+        self.output_dir = output_dir
+        self._llm_provider = llm_provider
+        self._owns_llm = llm_provider is None
         self._judge: DocumentationJudge | None = None
+        self._analyzer = LocalRepoAnalyzer()
 
     async def run(
         self,
@@ -144,6 +158,10 @@ class EvaluationRunner:
         finally:
             await self._judge.close()
             self._judge = None
+            # Close LLM provider if we created it
+            if self._owns_llm and self._llm_provider is not None:
+                await self._llm_provider.close()
+                self._llm_provider = None
 
         return results
 
@@ -192,8 +210,7 @@ class EvaluationRunner:
     async def _generate_docs(self, repo_path: Path) -> dict[str, str]:
         """Generate documentation for a repository.
 
-        This is a placeholder - in a real implementation, this would
-        use the JosephusService to generate docs.
+        Uses the actual doc generator with local repo analysis.
 
         Args:
             repo_path: Path to repository
@@ -201,10 +218,31 @@ class EvaluationRunner:
         Returns:
             Dict mapping file paths to generated content
         """
-        # Placeholder: In real implementation, would call doc generator
-        # For now, return empty docs (tests will mock this)
         logfire.info("Generating documentation", repo_path=str(repo_path))
-        return {}
+
+        # Get or create LLM provider
+        if self._llm_provider is None:
+            self._llm_provider = get_provider()
+
+        # Analyze repository locally
+        analysis = self._analyzer.analyze(repo_path)
+
+        if self.verbose:
+            print(f"  Analyzed {len(analysis.files)} files ({analysis.total_tokens:,} tokens)")
+
+        # Generate documentation
+        generator = DocGenerator(self._llm_provider)
+        config = GenerationConfig(
+            guidelines=self.guidelines,
+            output_dir=self.output_dir,
+        )
+
+        generated = await generator.generate(analysis, config)
+
+        if self.verbose:
+            print(f"  Generated {len(generated.files)} doc files")
+
+        return generated.files
 
     async def _calculate_doc_metrics(
         self,
