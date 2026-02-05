@@ -66,7 +66,7 @@ Josephus transforms code repositories into living, customer-facing documentation
 │  6. Review & Edit  ←  5. Generate Docs  ←  4. Analyze Codebase │
 │         │                                                        │
 │         ▼                                                        │
-│  7. Deploy Docs Site  →  8. Install GitHub App (CI)             │
+│  7. Commit to Repo (PR)  →  8. Install GitHub App (CI)          │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -77,8 +77,13 @@ Josephus transforms code repositories into living, customer-facing documentation
 4. **Codebase Analysis** - AI scans and understands the codebase
 5. **Documentation Generation** - Creates initial doc structure
 6. **Review & Edit** - User reviews, edits, approves
-7. **Deployment** - Publish to hosted docs site
+7. **Commit to Repo** - PR with docs committed to `/docs` folder
 8. **CI Installation** - Install GitHub App for PR monitoring
+
+**Deployment (user's choice):**
+- GitHub Pages (built-in, free)
+- Vercel / Netlify (automatic deploys)
+- Self-hosted
 
 ### 3.2 Initial Documentation Generation
 
@@ -237,16 +242,15 @@ style:
 │                                 ▼                                       │
 │  ┌──────────────────────────────────────────────────────────────┐      │
 │  │                      Data Layer                               │      │
-│  │  - PostgreSQL (projects, configs, history)                   │      │
+│  │  - PostgreSQL (projects, configs, generation history)        │      │
 │  │  - Vector DB (code embeddings for RAG)                       │      │
-│  │  - Object Storage (generated docs, assets)                   │      │
 │  └──────────────────────────────────────────────────────────────┘      │
 │                                                                          │
 │  ┌──────────────────────────────────────────────────────────────┐      │
-│  │                   Docs Hosting Layer                          │      │
-│  │  - Docusaurus static sites                                   │      │
-│  │  - Per-project subdomains or custom domains                  │      │
-│  │  - CDN distribution                                          │      │
+│  │                   Git-Based Doc Storage                       │      │
+│  │  - Docs committed to user's repo (/docs or configurable)     │      │
+│  │  - Docusaurus config committed alongside                     │      │
+│  │  - User deploys via GitHub Pages / Vercel / Netlify          │      │
 │  └──────────────────────────────────────────────────────────────┘      │
 │                                                                          │
 └─────────────────────────────────────────────────────────────────────────┘
@@ -267,7 +271,8 @@ style:
 | **Queue** | Redis + BullMQ | Job processing for doc generation |
 | **Doc Platform** | Docusaurus | See Section 2 recommendation |
 | **LLM Provider** | Multi-provider | Claude, GPT-4, Gemini (configurable) |
-| **Hosting** | Vercel/Railway + S3 | Easy deployment, scalable |
+| **Doc Storage** | Git (user's repo) | Docs as code, no vendor lock-in |
+| **API Hosting** | Vercel/Railway | Easy deployment, scalable |
 
 ### 5.2 GitHub Integration
 
@@ -339,10 +344,12 @@ Screen 5: Review Generated Docs
 ├── Edit inline
 ├── Approve/regenerate per section
 │
-Screen 6: Deployment
-├── Choose subdomain or custom domain
-├── Deploy button
-├── Install CI integration prompt
+Screen 6: Commit & Setup CI
+├── Preview PR with docs changes
+├── Choose target branch / folder path
+├── Create PR button
+├── Install GitHub App for ongoing PR monitoring
+├── (Optional) Guide for GitHub Pages / Vercel setup
 ```
 
 ### 6.2 PR Experience
@@ -367,7 +374,7 @@ Screen 6: Deployment
 - [ ] Basic doc generation (README → Getting Started)
 - [ ] Manual trigger only (no CI)
 - [ ] Single LLM provider (Claude)
-- [ ] Simple hosted Docusaurus output
+- [ ] Commit Docusaurus docs to user's repo via PR
 
 ### Phase 2: Core Product
 - [ ] Full onboarding wizard
@@ -398,14 +405,14 @@ Screen 6: Deployment
 
 ### Product Questions
 1. **Pricing model?** Per-repo, per-seat, usage-based?
-2. **Doc hosting included?** Or generate files for user's own hosting?
+2. ~~**Doc hosting included?**~~ **DECIDED:** Generate files to user's repo, they choose hosting
 3. **Multi-repo docs?** Single docs site for monorepo or multiple repos?
 4. **Localization?** Auto-translate docs to other languages?
 
 ### Technical Questions
 1. **Docusaurus vs custom?** Build on Docusaurus or custom doc renderer?
 2. **Vector DB choice?** pgvector (simpler) vs Pinecone (managed)?
-3. **Doc storage?** Git-based (commit to repo) vs external storage?
+3. ~~**Doc storage?**~~ **DECIDED:** Git-based - docs committed to user's repo
 4. **Real-time vs batch?** Generate on-demand or pre-compute?
 
 ### Scope Questions
@@ -458,5 +465,5 @@ Screen 6: Deployment
 
 ---
 
-*Document version: 0.1*
+*Document version: 0.2*
 *Last updated: 2026-02-05*
