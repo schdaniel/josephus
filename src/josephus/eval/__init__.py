@@ -1,5 +1,14 @@
 """Evaluation infrastructure for documentation quality assessment."""
 
+from josephus.eval.download import (
+    download_all,
+    download_repo,
+    get_repos_dir,
+    list_repos,
+    load_repos_config,
+    update_repos,
+)
+from josephus.eval.generate import generate_all, generate_docs_for_repo
 from josephus.eval.judge import DocumentationJudge, evaluate_documentation
 from josephus.eval.metrics import (
     DocumentationMetrics,
@@ -19,6 +28,16 @@ from josephus.eval.runner import (
 )
 
 __all__ = [
+    # Download
+    "download_all",
+    "download_repo",
+    "get_repos_dir",
+    "list_repos",
+    "load_repos_config",
+    "update_repos",
+    # Generate
+    "generate_all",
+    "generate_docs_for_repo",
     # Metrics
     "JudgeScores",
     "PRDetectionMetrics",
