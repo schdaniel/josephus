@@ -5,9 +5,13 @@ import hmac
 from typing import Any
 
 import logfire
-from fastapi import APIRouter, Header, HTTPException, Request, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from josephus.core.config import get_settings
+from josephus.db.session import get_session
+from josephus.worker import celery_app
+from josephus.worker.tasks import create_job, get_or_create_repository
 
 router = APIRouter()
 
@@ -41,6 +45,7 @@ def verify_webhook_signature(payload: bytes, signature: str | None, secret: str)
 @router.post("/github")
 async def handle_github_webhook(
     request: Request,
+    session: AsyncSession = Depends(get_session),
     x_hub_signature_256: str | None = Header(default=None),
     x_github_event: str | None = Header(default=None),
     x_github_delivery: str | None = Header(default=None),
@@ -79,11 +84,11 @@ async def handle_github_webhook(
     # Route to appropriate handler
     match x_github_event:
         case "installation":
-            await handle_installation(payload)
+            await handle_installation(payload, session)
         case "pull_request":
-            await handle_pull_request(payload)
+            await handle_pull_request(payload, session)
         case "push":
-            await handle_push(payload)
+            await handle_push(payload, session)
         case "ping":
             # GitHub sends ping on webhook setup
             return {"status": "pong"}
@@ -93,10 +98,11 @@ async def handle_github_webhook(
     return {"status": "queued"}
 
 
-async def handle_installation(payload: dict[str, Any]) -> None:
+async def handle_installation(payload: dict[str, Any], session: AsyncSession) -> None:
     """Handle GitHub App installation/uninstallation."""
     action = payload.get("action")
-    installation_id = payload.get("installation", {}).get("id")
+    installation = payload.get("installation", {})
+    installation_id = installation.get("id")
 
     logfire.info(
         "Installation event",
@@ -106,54 +112,100 @@ async def handle_installation(payload: dict[str, Any]) -> None:
 
     match action:
         case "created":
-            # TODO: Queue job to set up new installation
-            # - Store installation info in database
-            # - Send welcome message/email
-            pass
+            # Store repository info for each repo in the installation
+            repos = payload.get("repositories", [])
+            for repo_data in repos:
+                await get_or_create_repository(
+                    session=session,
+                    installation_id=installation_id,
+                    owner=repo_data["full_name"].split("/")[0],
+                    name=repo_data["name"],
+                    full_name=repo_data["full_name"],
+                    default_branch="main",  # Will be updated on first push
+                )
+            logfire.info(
+                "Installation created",
+                installation_id=installation_id,
+                repos_count=len(repos),
+            )
         case "deleted":
-            # TODO: Queue job to clean up installation
-            # - Mark installation as inactive
-            # - Clean up any cached data
-            pass
+            # Mark repositories as inactive (soft delete)
+            # For now, just log - repos stay in DB for history
+            logfire.info(
+                "Installation deleted",
+                installation_id=installation_id,
+            )
         case "suspend" | "unsuspend":
-            # TODO: Update installation status
-            pass
+            logfire.info(
+                "Installation status changed",
+                action=action,
+                installation_id=installation_id,
+            )
 
 
-async def handle_pull_request(payload: dict[str, Any]) -> None:
+async def handle_pull_request(payload: dict[str, Any], session: AsyncSession) -> None:
     """Handle pull request events - main entry point for doc updates."""
     action = payload.get("action")
     pr = payload.get("pull_request", {})
-    repo = payload.get("repository", {})
+    repo_data = payload.get("repository", {})
+    installation_id = payload.get("installation", {}).get("id")
 
     logfire.info(
         "Pull request event",
         action=action,
         pr_number=pr.get("number"),
-        repo=repo.get("full_name"),
+        repo=repo_data.get("full_name"),
     )
 
     # Only process on open/synchronize (new commits)
     if action not in ("opened", "synchronize"):
         return
 
-    # TODO: Queue Celery job for PR analysis
-    # celery_app.send_task(
-    #     "josephus.tasks.analyze_pr",
-    #     kwargs={
-    #         "installation_id": payload["installation"]["id"],
-    #         "repo_full_name": repo["full_name"],
-    #         "pr_number": pr["number"],
-    #         "head_sha": pr["head"]["sha"],
-    #     },
-    # )
+    # Get or create repository
+    repo = await get_or_create_repository(
+        session=session,
+        installation_id=installation_id,
+        owner=repo_data["owner"]["login"],
+        name=repo_data["name"],
+        full_name=repo_data["full_name"],
+        default_branch=repo_data.get("default_branch", "main"),
+    )
+
+    # Create job record
+    job = await create_job(
+        session=session,
+        repository_id=repo.id,
+        ref=pr["head"]["ref"],
+        trigger="pull_request",
+        pr_number=pr["number"],
+    )
+
+    # Queue Celery task for PR analysis
+    celery_app.send_task(
+        "josephus.worker.tasks.analyze_pull_request",
+        kwargs={
+            "job_id": job.id,
+            "installation_id": installation_id,
+            "owner": repo_data["owner"]["login"],
+            "repo": repo_data["name"],
+            "pr_number": pr["number"],
+            "head_sha": pr["head"]["sha"],
+        },
+    )
+
+    logfire.info(
+        "PR analysis job queued",
+        job_id=job.id,
+        pr_number=pr["number"],
+    )
 
 
-async def handle_push(payload: dict[str, Any]) -> None:
+async def handle_push(payload: dict[str, Any], session: AsyncSession) -> None:
     """Handle push events - triggers full doc rebuild on main branch."""
     ref = payload.get("ref", "")
-    repo = payload.get("repository", {})
-    default_branch = repo.get("default_branch", "main")
+    repo_data = payload.get("repository", {})
+    installation_id = payload.get("installation", {}).get("id")
+    default_branch = repo_data.get("default_branch", "main")
 
     # Only process pushes to default branch
     if ref != f"refs/heads/{default_branch}":
@@ -161,9 +213,42 @@ async def handle_push(payload: dict[str, Any]) -> None:
 
     logfire.info(
         "Push to default branch",
-        repo=repo.get("full_name"),
+        repo=repo_data.get("full_name"),
         ref=ref,
     )
 
-    # TODO: Queue full doc regeneration job
-    # This runs when PRs are merged to main
+    # Get or create repository
+    repo = await get_or_create_repository(
+        session=session,
+        installation_id=installation_id,
+        owner=repo_data["owner"]["login"],
+        name=repo_data["name"],
+        full_name=repo_data["full_name"],
+        default_branch=default_branch,
+    )
+
+    # Create job record
+    job = await create_job(
+        session=session,
+        repository_id=repo.id,
+        ref=default_branch,
+        trigger="push",
+    )
+
+    # Queue full documentation regeneration
+    celery_app.send_task(
+        "josephus.worker.tasks.generate_documentation",
+        kwargs={
+            "job_id": job.id,
+            "installation_id": installation_id,
+            "owner": repo_data["owner"]["login"],
+            "repo": repo_data["name"],
+            "ref": default_branch,
+        },
+    )
+
+    logfire.info(
+        "Documentation generation job queued",
+        job_id=job.id,
+        repo=repo_data["full_name"],
+    )
