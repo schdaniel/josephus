@@ -226,15 +226,38 @@ class FileFilter:
         return not any(self._match(path, pattern) for pattern in self.exclude_patterns)
 
     def _match(self, path: str, pattern: str) -> bool:
-        """Check if path matches a glob pattern."""
-        # Handle ** for recursive matching
-        if "**" in pattern:
-            # Use PurePosixPath.match for patterns with **
-            # This handles patterns like "**/generated/**", "node_modules/**", etc.
-            path_obj = PurePosixPath(path)
-            return path_obj.match(pattern)
-        else:
+        """Check if path matches a glob pattern.
+
+        Supports:
+        - Simple patterns: *.py, README.md
+        - Directory patterns: node_modules/**, .git/**
+        - Recursive patterns: **/generated/**, **/__snapshots__/**
+        """
+        if "**" not in pattern:
             return fnmatch.fnmatch(path, pattern)
+
+        # Handle ** patterns
+        if pattern.startswith("**/"):
+            # Pattern like "**/foo/**" or "**/foo.py"
+            # Match if any part of the path matches the rest
+            rest = pattern[3:]  # Remove leading "*/"
+            if "**" in rest:
+                # Pattern like "**/generated/**" - check if path contains "/generated/"
+                # Extract the middle part (e.g., "generated" from "generated/**")
+                middle = rest.split("/**")[0].split("/*")[0]
+                return f"/{middle}/" in f"/{path}/" or path.startswith(f"{middle}/")
+            else:
+                # Pattern like "**/foo.py" - match at any directory level
+                return fnmatch.fnmatch(path, f"*/{rest}") or fnmatch.fnmatch(path, rest)
+        elif pattern.endswith("/**"):
+            # Pattern like "node_modules/**" - match if path starts with prefix
+            prefix = pattern[:-3]  # Remove trailing "/**"
+            return path.startswith(prefix + "/") or path == prefix
+        else:
+            # Other patterns with ** in the middle
+            # Convert ** to * for simple fnmatch (approximate)
+            simple_pattern = pattern.replace("**", "*")
+            return fnmatch.fnmatch(path, simple_pattern)
 
 
 @dataclass
