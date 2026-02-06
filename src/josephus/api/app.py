@@ -6,8 +6,11 @@ from contextlib import asynccontextmanager
 import logfire
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
 from josephus import __version__
+from josephus.api.rate_limit import limiter
 from josephus.api.routes import api_v1, health, webhooks
 from josephus.core.config import get_settings
 
@@ -57,6 +60,10 @@ def create_app() -> FastAPI:
 
     # Instrument with Logfire
     logfire.instrument_fastapi(app)
+
+    # Rate limiting
+    app.state.limiter = limiter
+    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
     # Routes
     app.include_router(health.router, tags=["health"])
