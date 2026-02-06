@@ -6,7 +6,7 @@ from typing import Any
 
 import logfire
 
-from josephus.eval.metrics import JudgeScores
+from josephus.eval.metrics import GuidelinesAdherenceScores, JudgeScores
 from josephus.llm import LLMProvider, get_provider
 
 JUDGE_SYSTEM_PROMPT = """You are an expert documentation evaluator. Your task is to assess the quality of AI-generated documentation against ground truth reference documentation and source code.
@@ -205,5 +205,197 @@ async def evaluate_documentation(
     judge = DocumentationJudge(provider)
     try:
         return await judge.evaluate(generated, expected, code_context)
+    finally:
+        await judge.close()
+
+
+GUIDELINES_JUDGE_SYSTEM_PROMPT = """You are an expert documentation reviewer. Your task is to evaluate whether generated documentation adheres to specified guidelines.
+
+You will assess how well the documentation follows the provided guidelines across multiple dimensions:
+1. Tone adherence: Does the writing style match the guidelines' tone requirements?
+2. Format adherence: Does the structure/format match what's specified in guidelines?
+3. Content adherence: Does the content cover topics/aspects specified in guidelines?
+4. Overall adherence: How well does the documentation follow all guidelines overall?
+
+Always respond with valid JSON in the specified format."""
+
+
+GUIDELINES_JUDGE_PROMPT_TEMPLATE = """Evaluate whether the following documentation adheres to the specified guidelines.
+
+<documentation>
+{documentation}
+</documentation>
+
+<guidelines>
+{guidelines}
+</guidelines>
+
+Rate the documentation's adherence to guidelines on each dimension from 1-5:
+- 1: Very poor adherence / completely ignores guidelines
+- 2: Poor adherence / mostly ignores guidelines
+- 3: Partial adherence / follows some guidelines
+- 4: Good adherence / follows most guidelines
+- 5: Excellent adherence / fully follows guidelines
+
+Return your evaluation as JSON with this exact structure:
+{{
+    "tone_adherence": <1-5>,
+    "format_adherence": <1-5>,
+    "content_adherence": <1-5>,
+    "overall_adherence": <1-5>,
+    "deviations": ["list of specific guideline deviations found, if any"]
+}}
+
+Important:
+- Be specific about which guidelines are or aren't followed
+- List concrete deviations in the "deviations" array
+- Consider both explicit and implicit guideline requirements"""
+
+
+class GuidelinesJudge:
+    """LLM-based judge for evaluating guidelines adherence."""
+
+    def __init__(self, provider: LLMProvider | None = None) -> None:
+        """Initialize the judge.
+
+        Args:
+            provider: LLM provider to use. Defaults to configured provider.
+        """
+        self._provider = provider
+        self._owns_provider = provider is None
+
+    async def _get_provider(self) -> LLMProvider:
+        """Get or create LLM provider."""
+        if self._provider is None:
+            self._provider = get_provider()
+        return self._provider
+
+    async def evaluate(
+        self,
+        documentation: str,
+        guidelines: str,
+    ) -> GuidelinesAdherenceScores:
+        """Evaluate documentation adherence to guidelines.
+
+        Args:
+            documentation: Generated documentation content
+            guidelines: Guidelines the documentation should follow
+
+        Returns:
+            GuidelinesAdherenceScores with ratings and deviations
+        """
+        provider = await self._get_provider()
+
+        prompt = GUIDELINES_JUDGE_PROMPT_TEMPLATE.format(
+            documentation=documentation[:50000],  # Limit size
+            guidelines=guidelines,
+        )
+
+        logfire.info(
+            "Running guidelines adherence evaluation",
+            documentation_len=len(documentation),
+            guidelines_len=len(guidelines),
+        )
+
+        response = await provider.generate(
+            prompt=prompt,
+            system=GUIDELINES_JUDGE_SYSTEM_PROMPT,
+            max_tokens=1024,
+            temperature=0.1,  # Low temperature for consistent evaluation
+        )
+
+        scores = self._parse_response(response.content)
+
+        logfire.info(
+            "Guidelines adherence evaluation complete",
+            tone=scores.tone_adherence,
+            format=scores.format_adherence,
+            content=scores.content_adherence,
+            overall=scores.overall_adherence,
+            deviations_count=len(scores.deviations),
+        )
+
+        return scores
+
+    def _parse_response(self, response: str) -> GuidelinesAdherenceScores:
+        """Parse LLM response into GuidelinesAdherenceScores.
+
+        Args:
+            response: Raw LLM response text
+
+        Returns:
+            Parsed GuidelinesAdherenceScores
+        """
+        # Try to extract JSON from response
+        json_match = re.search(r"\{[^{}]*\}", response, re.DOTALL)
+        if not json_match:
+            logfire.warn(
+                "Could not find JSON in guidelines judge response", response=response[:500]
+            )
+            return GuidelinesAdherenceScores(
+                tone_adherence=3.0,
+                format_adherence=3.0,
+                content_adherence=3.0,
+                overall_adherence=3.0,
+                deviations=["Failed to parse judge response"],
+            )
+
+        try:
+            data: dict[str, Any] = json.loads(json_match.group())
+
+            return GuidelinesAdherenceScores(
+                tone_adherence=self._validate_score(data.get("tone_adherence", 3)),
+                format_adherence=self._validate_score(data.get("format_adherence", 3)),
+                content_adherence=self._validate_score(data.get("content_adherence", 3)),
+                overall_adherence=self._validate_score(data.get("overall_adherence", 3)),
+                deviations=data.get("deviations", []) or [],
+            )
+        except (json.JSONDecodeError, ValueError) as e:
+            logfire.warn(
+                "Failed to parse guidelines judge response JSON",
+                error=str(e),
+                response=response[:500],
+            )
+            return GuidelinesAdherenceScores(
+                tone_adherence=3.0,
+                format_adherence=3.0,
+                content_adherence=3.0,
+                overall_adherence=3.0,
+                deviations=[f"Failed to parse: {e}"],
+            )
+
+    def _validate_score(self, score: Any) -> float:
+        """Validate and clamp score to 1-5 range."""
+        try:
+            value = float(score)
+            return max(1.0, min(5.0, value))
+        except (TypeError, ValueError):
+            return 3.0
+
+    async def close(self) -> None:
+        """Close the LLM provider if we own it."""
+        if self._owns_provider and self._provider is not None:
+            await self._provider.close()
+            self._provider = None
+
+
+async def evaluate_guidelines_adherence(
+    documentation: str,
+    guidelines: str,
+    provider: LLMProvider | None = None,
+) -> GuidelinesAdherenceScores:
+    """Convenience function to evaluate guidelines adherence.
+
+    Args:
+        documentation: Generated documentation content
+        guidelines: Guidelines the documentation should follow
+        provider: Optional LLM provider
+
+    Returns:
+        GuidelinesAdherenceScores with ratings and deviations
+    """
+    judge = GuidelinesJudge(provider)
+    try:
+        return await judge.evaluate(documentation, guidelines)
     finally:
         await judge.close()

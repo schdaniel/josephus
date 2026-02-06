@@ -35,6 +35,39 @@ class JudgeScores:
 
 
 @dataclass
+class GuidelinesAdherenceScores:
+    """Scores from guidelines adherence evaluation."""
+
+    tone_adherence: float  # 1-5: Does the tone match guidelines?
+    format_adherence: float  # 1-5: Does the format match guidelines?
+    content_adherence: float  # 1-5: Does the content follow guidelines?
+    overall_adherence: float  # 1-5: Overall guidelines adherence
+    deviations: list[str] = field(default_factory=list)  # Specific deviations found
+
+    @property
+    def average_score(self) -> float:
+        """Calculate average score across all dimensions."""
+        scores = [
+            self.tone_adherence,
+            self.format_adherence,
+            self.content_adherence,
+            self.overall_adherence,
+        ]
+        return sum(scores) / len(scores)
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to dictionary."""
+        return {
+            "tone_adherence": self.tone_adherence,
+            "format_adherence": self.format_adherence,
+            "content_adherence": self.content_adherence,
+            "overall_adherence": self.overall_adherence,
+            "average": self.average_score,
+            "deviations": self.deviations,
+        }
+
+
+@dataclass
 class PRDetectionMetrics:
     """Metrics for PR relevance detection accuracy."""
 
@@ -99,6 +132,7 @@ class DocumentationMetrics:
     structure_score: float = 0.0  # Correct headings, code blocks, links
     readability_score: float = 0.0  # Flesch-Kincaid grade level
     judge_scores: JudgeScores | None = None
+    guidelines_scores: GuidelinesAdherenceScores | None = None
     files_evaluated: int = 0
     total_tokens_used: int = 0
 
@@ -116,6 +150,11 @@ class DocumentationMetrics:
             return (5 - self.judge_scores.hallucination_free) / 4 * 100
         return 0.0
 
+    @property
+    def guidelines_adherence_score(self) -> float:
+        """Guidelines adherence score (1-5 scale)."""
+        return self.guidelines_scores.average_score if self.guidelines_scores else 0.0
+
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
@@ -124,9 +163,13 @@ class DocumentationMetrics:
             "readability_score": self.readability_score,
             "accuracy_score": self.accuracy_score,
             "hallucination_rate": self.hallucination_rate,
+            "guidelines_adherence_score": self.guidelines_adherence_score,
             "files_evaluated": self.files_evaluated,
             "total_tokens_used": self.total_tokens_used,
             "judge_scores": self.judge_scores.to_dict() if self.judge_scores else None,
+            "guidelines_scores": (
+                self.guidelines_scores.to_dict() if self.guidelines_scores else None
+            ),
         }
 
 
