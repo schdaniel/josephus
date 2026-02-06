@@ -614,7 +614,7 @@ class TestMultipleFilesValidation:
         call_count = 0
 
         async def mock_evaluate(
-            documentation: str,
+            documentation: str,  # noqa: ARG001
             guidelines: str,  # noqa: ARG001
         ) -> GuidelinesAdherenceScores:
             nonlocal call_count
