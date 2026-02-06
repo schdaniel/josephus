@@ -1,10 +1,13 @@
 """Application configuration using pydantic-settings."""
 
 from functools import lru_cache
-from typing import Literal
+from typing import Literal, Self
 
-from pydantic import Field, PostgresDsn, RedisDsn
+from pydantic import Field, PostgresDsn, RedisDsn, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Default database URL for development only - uses obvious placeholder credentials
+_DEV_DATABASE_URL = "postgresql+asyncpg://postgres:postgres@localhost:5432/josephus"
 
 
 class Settings(BaseSettings):
@@ -25,10 +28,21 @@ class Settings(BaseSettings):
     api_host: str = "0.0.0.0"
     api_port: int = 8000
 
-    # Database
-    database_url: PostgresDsn = Field(
-        default="postgresql+asyncpg://postgres:postgres@localhost:5432/josephus"
-    )
+    # Database - default only allowed in development
+    database_url: PostgresDsn | None = Field(default=None)
+
+    @model_validator(mode="after")
+    def validate_database_url(self) -> Self:
+        """Ensure database_url is explicitly set in non-development environments."""
+        if self.database_url is None:
+            if self.environment != "development":
+                raise ValueError(
+                    "DATABASE_URL must be explicitly set in non-development environments. "
+                    f"Current environment: {self.environment}"
+                )
+            # Use development default only in development mode
+            self.database_url = PostgresDsn(_DEV_DATABASE_URL)
+        return self
 
     # Redis
     redis_url: RedisDsn = Field(default="redis://localhost:6379/0")
