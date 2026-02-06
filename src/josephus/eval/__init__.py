@@ -10,10 +10,16 @@ from josephus.eval.download import (
 )
 from josephus.eval.evaluate import evaluate_all, evaluate_docs
 from josephus.eval.generate import generate_all, generate_docs_for_repo
-from josephus.eval.judge import DocumentationJudge, evaluate_documentation
+from josephus.eval.judge import (
+    DocumentationJudge,
+    GuidelinesJudge,
+    evaluate_documentation,
+    evaluate_guidelines_adherence,
+)
 from josephus.eval.metrics import (
     DocumentationMetrics,
     EvaluationResult,
+    GuidelinesAdherenceScores,
     JudgeScores,
     PRDetectionMetrics,
     aggregate_metrics,
@@ -43,6 +49,7 @@ __all__ = [
     "generate_all",
     "generate_docs_for_repo",
     # Metrics
+    "GuidelinesAdherenceScores",
     "JudgeScores",
     "PRDetectionMetrics",
     "DocumentationMetrics",
@@ -53,7 +60,9 @@ __all__ = [
     "aggregate_metrics",
     # Judge
     "DocumentationJudge",
+    "GuidelinesJudge",
     "evaluate_documentation",
+    "evaluate_guidelines_adherence",
     # Runner
     "EvalDataset",
     "EvaluationRunner",

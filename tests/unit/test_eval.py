@@ -11,6 +11,7 @@ from josephus.eval import (
     EvalDataset,
     EvaluationResult,
     EvaluationRunner,
+    GuidelinesAdherenceScores,
     JudgeScores,
     PRDetectionMetrics,
     aggregate_metrics,
@@ -18,7 +19,7 @@ from josephus.eval import (
     calculate_readability,
     calculate_structure_score,
 )
-from josephus.eval.judge import DocumentationJudge
+from josephus.eval.judge import DocumentationJudge, GuidelinesJudge
 
 
 class TestJudgeScores:
@@ -439,6 +440,123 @@ class TestDocumentationJudge:
         assert judge._validate_score(10) == 5.0
         assert judge._validate_score(3.5) == 3.5
         assert judge._validate_score("invalid") == 3.0
+
+
+class TestGuidelinesAdherenceScores:
+    """Tests for GuidelinesAdherenceScores dataclass."""
+
+    def test_average_score(self) -> None:
+        """Test average score calculation."""
+        scores = GuidelinesAdherenceScores(
+            tone_adherence=4.0,
+            format_adherence=3.0,
+            content_adherence=5.0,
+            overall_adherence=4.0,
+        )
+
+        assert scores.average_score == 4.0
+
+    def test_to_dict(self) -> None:
+        """Test conversion to dictionary."""
+        scores = GuidelinesAdherenceScores(
+            tone_adherence=4.0,
+            format_adherence=3.0,
+            content_adherence=5.0,
+            overall_adherence=4.0,
+            deviations=["Missing code examples"],
+        )
+
+        d = scores.to_dict()
+
+        assert d["tone_adherence"] == 4.0
+        assert d["format_adherence"] == 3.0
+        assert d["content_adherence"] == 5.0
+        assert d["overall_adherence"] == 4.0
+        assert d["average"] == 4.0
+        assert d["deviations"] == ["Missing code examples"]
+
+
+class TestGuidelinesJudge:
+    """Tests for GuidelinesJudge."""
+
+    def test_parse_valid_response(self) -> None:
+        """Test parsing valid JSON response."""
+        judge = GuidelinesJudge()
+
+        response = """
+        Here is my evaluation:
+        {"tone_adherence": 4, "format_adherence": 3, "content_adherence": 5, "overall_adherence": 4, "deviations": ["Missing examples"]}
+        """
+
+        scores = judge._parse_response(response)
+
+        assert scores.tone_adherence == 4.0
+        assert scores.format_adherence == 3.0
+        assert scores.content_adherence == 5.0
+        assert scores.overall_adherence == 4.0
+        assert scores.deviations == ["Missing examples"]
+
+    def test_parse_invalid_response(self) -> None:
+        """Test parsing invalid response returns defaults."""
+        judge = GuidelinesJudge()
+
+        response = "This is not JSON at all"
+        scores = judge._parse_response(response)
+
+        # Should return default scores
+        assert scores.tone_adherence == 3.0
+        assert scores.format_adherence == 3.0
+        assert len(scores.deviations) > 0
+
+    def test_validate_score_clamps_values(self) -> None:
+        """Test score validation clamps to 1-5 range."""
+        judge = GuidelinesJudge()
+
+        assert judge._validate_score(0) == 1.0
+        assert judge._validate_score(10) == 5.0
+        assert judge._validate_score(3.5) == 3.5
+        assert judge._validate_score("invalid") == 3.0
+
+
+class TestDocumentationMetricsWithGuidelines:
+    """Tests for DocumentationMetrics with guidelines adherence."""
+
+    def test_guidelines_adherence_score(self) -> None:
+        """Test guidelines adherence score property."""
+        metrics = DocumentationMetrics(
+            guidelines_scores=GuidelinesAdherenceScores(
+                tone_adherence=4.5,
+                format_adherence=4.0,
+                content_adherence=4.0,
+                overall_adherence=4.5,
+            )
+        )
+
+        assert metrics.guidelines_adherence_score == pytest.approx(4.25)
+
+    def test_guidelines_adherence_score_none(self) -> None:
+        """Test guidelines adherence score when no guidelines scores."""
+        metrics = DocumentationMetrics()
+
+        assert metrics.guidelines_adherence_score == 0.0
+
+    def test_to_dict_includes_guidelines(self) -> None:
+        """Test to_dict includes guidelines scores."""
+        metrics = DocumentationMetrics(
+            guidelines_scores=GuidelinesAdherenceScores(
+                tone_adherence=4.0,
+                format_adherence=3.0,
+                content_adherence=5.0,
+                overall_adherence=4.0,
+            )
+        )
+
+        d = metrics.to_dict()
+
+        assert "guidelines_adherence_score" in d
+        assert d["guidelines_adherence_score"] == 4.0
+        assert "guidelines_scores" in d
+        assert d["guidelines_scores"]["tone_adherence"] == 4.0
 
 
 class TestEvalDataset:
