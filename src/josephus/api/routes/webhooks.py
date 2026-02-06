@@ -56,7 +56,21 @@ async def handle_github_webhook(
     body = await request.body()
 
     # Verify webhook signature (CRITICAL for security)
-    if settings.github_webhook_secret and not verify_webhook_signature(
+    if not settings.github_webhook_secret:
+        if settings.environment != "development":
+            logfire.error(
+                "Webhook secret not configured in production environment",
+                environment=settings.environment,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Webhook verification not configured",
+            )
+        logfire.warn(
+            "Webhook signature verification disabled in development mode",
+            delivery_id=x_github_delivery,
+        )
+    elif not verify_webhook_signature(
         body, x_hub_signature_256, settings.github_webhook_secret
     ):
         logfire.warn("Invalid webhook signature", delivery_id=x_github_delivery)
