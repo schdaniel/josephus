@@ -166,17 +166,15 @@ class DocGenerator:
 
             # Filter out any dangerous path components
             safe_parts = [
-                part for part in parts
+                part
+                for part in parts
                 if part not in (".", "..", "", "/")
                 and not part.startswith("~")
                 and not part.startswith(".")  # Reject hidden files/dirs
             ]
 
             # Reject paths that are only dots (like "...")
-            safe_parts = [
-                part for part in safe_parts
-                if not all(c == "." for c in part)
-            ]
+            safe_parts = [part for part in safe_parts if not all(c == "." for c in part)]
 
             if not safe_parts:
                 logfire.warn("Path has no valid components", path=path)

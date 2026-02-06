@@ -1,9 +1,10 @@
 """Unit tests for path safety in documentation generator."""
 
+from unittest.mock import MagicMock
+
 import pytest
 
 from josephus.generator.docs import DocGenerator
-from unittest.mock import MagicMock
 
 
 class TestSafePath:
