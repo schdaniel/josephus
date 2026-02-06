@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from josephus.api.auth import verify_api_key
 from josephus.db.session import get_session
 from josephus.worker import celery_app
 from josephus.worker.tasks import create_job, get_or_create_repository
@@ -49,6 +50,7 @@ class JobStatusResponse(BaseModel):
 async def trigger_documentation_generation(
     request: GenerateRequest,
     session: AsyncSession = Depends(get_session),
+    _authenticated: bool = Depends(verify_api_key),
 ) -> dict[str, Any]:
     """Manually trigger documentation generation for a repository.
 
@@ -119,6 +121,7 @@ async def trigger_documentation_generation(
 async def get_job_status(
     job_id: str,
     session: AsyncSession = Depends(get_session),
+    _authenticated: bool = Depends(verify_api_key),
 ) -> dict[str, Any]:
     """Get the status of a documentation generation job.
 
@@ -155,6 +158,7 @@ async def list_jobs(
     session: AsyncSession = Depends(get_session),
     installation_id: int | None = None,
     limit: int = 20,
+    _authenticated: bool = Depends(verify_api_key),
 ) -> list[dict[str, Any]]:
     """List recent documentation generation jobs.
 

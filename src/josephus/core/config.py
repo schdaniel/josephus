@@ -27,6 +27,10 @@ class Settings(BaseSettings):
     # API
     api_host: str = "0.0.0.0"
     api_port: int = 8000
+    api_key: str | None = Field(
+        default=None,
+        description="API key for authenticating manual API requests. Required in production.",
+    )
 
     # Database - default only allowed in development
     database_url: PostgresDsn | None = Field(default=None)
