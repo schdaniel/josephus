@@ -1,6 +1,5 @@
 """Unit tests for audience inference."""
 
-
 from josephus.analyzer.audience import (
     AudienceInference,
     AudienceType,
