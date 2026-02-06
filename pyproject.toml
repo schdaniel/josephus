@@ -125,3 +125,13 @@ exclude_lines = [
     "raise NotImplementedError",
     "if TYPE_CHECKING:",
 ]
+
+# ══════════════════════════════════════════════════════════════════════
+# Security - Bandit SAST configuration
+# ══════════════════════════════════════════════════════════════════════
+[tool.bandit]
+exclude_dirs = ["tests", "venv", ".venv", "build", "dist", "alembic"]
+skips = ["B101"]  # Skip assert_used (common in application code for validation)
+
+[tool.bandit.assert_used]
+skips = ["*_test.py", "*test_*.py", "test_*.py", "conftest.py"]
