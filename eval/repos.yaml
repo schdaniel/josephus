@@ -60,3 +60,7 @@ repos:
     description: "Open framework for building developer portals"
     docs_url: https://backstage.io/docs/overview/what-is-backstage
     docs_path: docs
+    exclude_dirs:
+      - architecture-decisions
+      - contribute
+      - dls

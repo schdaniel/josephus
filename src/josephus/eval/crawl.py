@@ -120,6 +120,7 @@ def crawl_github_docs(
     output_dir: Path,
     docs_format: str = "markdown",
     max_files: int = 200,
+    exclude_dirs: list[str] | None = None,
 ) -> dict[str, str]:
     """Crawl documentation from a GitHub repository.
 
@@ -130,12 +131,14 @@ def crawl_github_docs(
         output_dir: Directory to save documentation files
         docs_format: Format of documentation (markdown, asciidoc)
         max_files: Maximum number of files to fetch
+        exclude_dirs: List of directory names to exclude
 
     Returns:
         Dictionary mapping file paths to saved file paths
     """
     results: dict[str, str] = {}
     files_fetched = 0
+    exclude_set = set(exclude_dirs or [])
 
     def crawl_directory(path: str, depth: int = 0) -> None:
         nonlocal files_fetched
@@ -169,6 +172,9 @@ def crawl_github_docs(
                     "images",
                     "static",
                 ):
+                    continue
+                # Skip user-specified exclude directories
+                if item_name in exclude_set:
                     continue
                 crawl_directory(item_path, depth + 1)
 
@@ -213,6 +219,7 @@ def crawl_repo_docs(
 
     docs_path = config.get("docs_path", "docs")
     docs_format = config.get("docs_format", "markdown")
+    exclude_dirs = config.get("exclude_dirs", [])
 
     output_dir = get_ground_truth_dir(repo_name)
 
@@ -230,6 +237,8 @@ def crawl_repo_docs(
         output_dir.mkdir(parents=True, exist_ok=True)
 
     print(f"\nCrawling documentation for: {repo_name}")
+    if exclude_dirs:
+        print(f"  Excluding directories: {', '.join(exclude_dirs)}")
     results = crawl_github_docs(
         owner=owner,
         repo=repo,
@@ -237,6 +246,7 @@ def crawl_repo_docs(
         output_dir=output_dir,
         docs_format=docs_format,
         max_files=max_files,
+        exclude_dirs=exclude_dirs,
     )
     return len(results) > 0
 
