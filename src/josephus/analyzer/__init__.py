@@ -1,5 +1,6 @@
 """Repository analysis and context preparation."""
 
+from josephus.analyzer.audience import AudienceInference, AudienceType, infer_audience
 from josephus.analyzer.filters import FileFilter, FilteredFile, filter_tree
 from josephus.analyzer.local import LocalRepoAnalyzer, analyze_local_repo
 from josephus.analyzer.repo import (
@@ -11,6 +12,8 @@ from josephus.analyzer.repo import (
 
 __all__ = [
     "AnalyzedFile",
+    "AudienceInference",
+    "AudienceType",
     "FileFilter",
     "FilteredFile",
     "LocalRepoAnalyzer",
@@ -19,4 +22,5 @@ __all__ = [
     "analyze_local_repo",
     "filter_tree",
     "format_for_llm",
+    "infer_audience",
 ]

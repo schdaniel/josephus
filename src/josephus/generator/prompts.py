@@ -7,8 +7,8 @@ Your task is to generate customer-facing documentation based on the provided cod
 Focus on helping users understand and use the software, not on internal implementation details.
 
 Guidelines:
-- Write for the target audience specified in the guidelines (technical or non-technical)
-- Use clear, concise language
+- Write for the target audience as specified (adjust tone and depth accordingly)
+- Use clear, concise language appropriate for the audience
 - Include practical examples where helpful
 - Organize content logically with clear headings
 - Focus on "what" and "how" for users, not "why" for developers
@@ -27,6 +27,7 @@ def build_generation_prompt(
     guidelines: str = "",
     existing_docs: str = "",
     structure_plan: str = "",
+    audience_context: str = "",
 ) -> str:
     """Build the prompt for documentation generation.
 
@@ -35,6 +36,7 @@ def build_generation_prompt(
         guidelines: User's documentation guidelines
         existing_docs: Existing documentation to consider
         structure_plan: Pre-planned documentation structure (from DocStructurePlan.to_prompt_context())
+        audience_context: Inferred audience context (from AudienceInference.to_prompt_context())
 
     Returns:
         Formatted prompt string
@@ -44,6 +46,16 @@ def build_generation_prompt(
         "",
         repo_context,
     ]
+
+    if audience_context:
+        parts.extend(
+            [
+                "",
+                "<target_audience>",
+                audience_context,
+                "</target_audience>",
+            ]
+        )
 
     if guidelines:
         parts.extend(

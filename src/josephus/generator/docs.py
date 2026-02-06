@@ -7,7 +7,7 @@ from pathlib import Path, PurePosixPath
 
 import logfire
 
-from josephus.analyzer import RepoAnalysis, format_for_llm
+from josephus.analyzer import AudienceInference, RepoAnalysis, format_for_llm, infer_audience
 from josephus.generator.planning import DocPlanner, DocStructurePlan
 from josephus.generator.prompts import SYSTEM_PROMPT, build_generation_prompt
 from josephus.llm import LLMProvider, LLMResponse
@@ -20,6 +20,7 @@ class GeneratedDocs:
     files: dict[str, str]  # path -> content
     llm_response: LLMResponse
     structure_plan: DocStructurePlan | None = None
+    audience: AudienceInference | None = None
     total_files: int = 0
     total_chars: int = 0
 
@@ -86,7 +87,17 @@ class DocGenerator:
             plan_structure=config.plan_structure,
         )
 
-        # Step 1: Optionally plan structure first
+        # Step 1: Infer target audience
+        audience = infer_audience(analysis, config.guidelines)
+        audience_context = audience.to_prompt_context()
+        logfire.info(
+            "Target audience inferred",
+            audience=audience.audience.value,
+            confidence=audience.confidence,
+            signals=audience.signals,
+        )
+
+        # Step 2: Optionally plan structure first
         structure_plan: DocStructurePlan | None = None
         structure_plan_context = ""
 
@@ -103,17 +114,18 @@ class DocGenerator:
                 file_paths=structure_plan.file_paths,
             )
 
-        # Step 2: Format repository for LLM
+        # Step 3: Format repository for LLM
         repo_context = format_for_llm(analysis, config.guidelines)
 
-        # Step 3: Build prompt (with or without structure plan)
+        # Step 4: Build prompt (with audience and structure plan)
         prompt = build_generation_prompt(
             repo_context=repo_context,
             guidelines=config.guidelines,
             structure_plan=structure_plan_context,
+            audience_context=audience_context,
         )
 
-        # Step 4: Generate documentation
+        # Step 5: Generate documentation
         response = await self.llm.generate(
             prompt=prompt,
             system=SYSTEM_PROMPT,
@@ -121,13 +133,14 @@ class DocGenerator:
             temperature=config.temperature,
         )
 
-        # Step 5: Parse response
+        # Step 6: Parse response
         files = self._parse_response(response.content, config.output_dir)
 
         logfire.info(
             "Documentation generated",
             repo=analysis.repository.full_name,
             files_generated=len(files),
+            audience=audience.audience.value,
             input_tokens=response.input_tokens,
             output_tokens=response.output_tokens,
         )
@@ -136,6 +149,7 @@ class DocGenerator:
             files=files,
             llm_response=response,
             structure_plan=structure_plan,
+            audience=audience,
         )
 
     def _safe_path(self, path: str, output_dir: str) -> str | None:
