@@ -46,7 +46,6 @@ RATE_LIMITS = {
     # Expensive operations - strict limits
     "generate": "5/minute",  # Documentation generation is expensive (LLM calls)
     "webhooks": "60/minute",  # GitHub may send bursts of webhooks
-
     # Read operations - more lenient
     "jobs_list": "30/minute",
     "job_status": "60/minute",
