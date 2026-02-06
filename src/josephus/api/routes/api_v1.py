@@ -3,11 +3,12 @@
 from typing import Any
 
 import logfire
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from josephus.api.auth import verify_api_key
+from josephus.api.rate_limit import RATE_LIMITS, limiter
 from josephus.db.session import get_session
 from josephus.worker import celery_app
 from josephus.worker.tasks import create_job, get_or_create_repository
@@ -47,7 +48,9 @@ class JobStatusResponse(BaseModel):
 
 
 @router.post("/generate", response_model=GenerateResponse)
+@limiter.limit(RATE_LIMITS["generate"])
 async def trigger_documentation_generation(
+    http_request: Request,  # Required for rate limiting
     request: GenerateRequest,
     session: AsyncSession = Depends(get_session),
     _authenticated: bool = Depends(verify_api_key),
@@ -60,6 +63,8 @@ async def trigger_documentation_generation(
     3. Create a PR with the generated docs
 
     Returns immediately with a job ID for status polling.
+
+    Rate limited to 5 requests per minute per IP address.
     """
     logfire.info(
         "Manual documentation generation requested",
@@ -118,7 +123,9 @@ async def trigger_documentation_generation(
 
 
 @router.get("/jobs/{job_id}", response_model=JobStatusResponse)
+@limiter.limit(RATE_LIMITS["job_status"])
 async def get_job_status(
+    request: Request,  # Required for rate limiting
     job_id: str,
     session: AsyncSession = Depends(get_session),
     _authenticated: bool = Depends(verify_api_key),
@@ -126,6 +133,8 @@ async def get_job_status(
     """Get the status of a documentation generation job.
 
     Poll this endpoint to track progress of queued jobs.
+
+    Rate limited to 60 requests per minute per IP address.
     """
 
     from josephus.db.models import Job, Repository
@@ -154,7 +163,9 @@ async def get_job_status(
 
 
 @router.get("/jobs", response_model=list[JobStatusResponse])
+@limiter.limit(RATE_LIMITS["jobs_list"])
 async def list_jobs(
+    request: Request,  # Required for rate limiting
     session: AsyncSession = Depends(get_session),
     installation_id: int | None = None,
     limit: int = 20,
@@ -163,6 +174,8 @@ async def list_jobs(
     """List recent documentation generation jobs.
 
     Optionally filter by installation_id.
+
+    Rate limited to 30 requests per minute per IP address.
     """
     from sqlalchemy import select
     from sqlalchemy.orm import selectinload

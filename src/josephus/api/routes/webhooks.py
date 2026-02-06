@@ -7,6 +7,7 @@ from typing import Any
 import logfire
 from fastapi import APIRouter, Header, HTTPException, Request, status
 
+from josephus.api.rate_limit import RATE_LIMITS, limiter
 from josephus.core.config import get_settings
 
 router = APIRouter()
@@ -39,6 +40,7 @@ def verify_webhook_signature(payload: bytes, signature: str | None, secret: str)
 
 
 @router.post("/github")
+@limiter.limit(RATE_LIMITS["webhooks"])
 async def handle_github_webhook(
     request: Request,
     x_hub_signature_256: str | None = Header(default=None),
@@ -49,6 +51,8 @@ async def handle_github_webhook(
 
     Verifies signature, then queues appropriate job based on event type.
     Returns immediately - actual processing happens async in Celery workers.
+
+    Rate limited to 60 requests per minute per IP address.
     """
     settings = get_settings()
 

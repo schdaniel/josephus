@@ -40,6 +40,7 @@ dependencies = [
     "python-multipart>=0.0.12",
     "pyjwt[crypto]>=2.9.0",
     "logfire[fastapi]>=2.0.0",
+    "slowapi>=0.1.9",
 ]
 
 [project.optional-dependencies]
