@@ -1,0 +1,74 @@
+{
+  "_comment": "Expected items that documentation should cover for Taiga",
+  "expected_items": [
+    "Authentication API",
+    "Projects API",
+    "Epics API",
+    "User Stories API",
+    "Tasks API",
+    "Issues API",
+    "Wiki API",
+    "Milestones API",
+    "Webhooks API",
+    "Search API",
+    "Memberships",
+    "Custom Attributes",
+    "Attachments",
+    "Notifications",
+    "GitHub integration",
+    "Trello importer",
+    "Jira importer"
+  ],
+  "categories": {
+    "api_endpoints": [
+      "POST /api/v1/auth/",
+      "GET /api/v1/projects/",
+      "POST /api/v1/projects/",
+      "GET /api/v1/epics/",
+      "GET /api/v1/userstories/",
+      "GET /api/v1/tasks/",
+      "GET /api/v1/issues/",
+      "GET /api/v1/wiki/",
+      "GET /api/v1/milestones/",
+      "GET /api/v1/webhooks/",
+      "GET /api/v1/search",
+      "POST /api/v1/memberships/",
+      "POST /api/v1/github-hook"
+    ],
+    "core_modules": [
+      "auth",
+      "users",
+      "projects",
+      "epics",
+      "userstories",
+      "tasks",
+      "issues",
+      "wiki",
+      "milestones",
+      "webhooks",
+      "attachments",
+      "custom_attributes",
+      "notifications",
+      "timeline"
+    ],
+    "integrations": [
+      "GitHub webhook",
+      "GitLab webhook",
+      "Bitbucket webhook",
+      "Trello importer",
+      "Jira importer",
+      "GitHub importer",
+      "Asana importer"
+    ],
+    "configuration": [
+      "DATABASES",
+      "CELERY_ENABLED",
+      "EMAIL_BACKEND",
+      "PUBLIC_REGISTER_ENABLED",
+      "WEBHOOKS_ENABLED",
+      "IMPORTERS",
+      "SECRET_KEY",
+      "MEDIA_ROOT"
+    ]
+  }
+}

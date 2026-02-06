@@ -1,0 +1,34 @@
+diff --git a/tests/test_builder.py b/tests/test_builder.py
+index 1234567..abcdefg 100644
+--- a/tests/test_builder.py
++++ b/tests/test_builder.py
+@@ -45,7 +45,7 @@ class TestBuilder:
+
+     def test_build_creates_output_directory(self, project):
+         builder = Builder(project.env)
+-        # Test that bulder creates output dir
++        # Test that builder creates output dir
+         builder.build_all()
+         assert project.output_path.exists()
+
+@@ -78,7 +78,7 @@ class TestBuilder:
+
+     def test_incremental_build(self, project):
+         builder = Builder(project.env)
+-        # Fist build
++        # First build
+         builder.build_all()
+         first_artifacts = list(project.output_path.glob("**/*"))
+
+diff --git a/tests/test_publisher.py b/tests/test_publisher.py
+index 1234567..abcdefg 100644
+--- a/tests/test_publisher.py
++++ b/tests/test_publisher.py
+@@ -23,7 +23,7 @@ class TestPublisher:
+
+     def test_rsync_publisher(self, project, mock_rsync):
+         publisher = get_publisher(project.env, "rsync://server/path")
+-        # Tets rsync deployment
++        # Test rsync deployment
+         publisher.publish()
+         mock_rsync.assert_called_once()

@@ -1,0 +1,65 @@
+diff --git a/src/database/domains.js b/src/database/domains.js
+index 1234567..abcdefg 100644
+--- a/src/database/domains.js
++++ b/src/database/domains.js
+@@ -1,45 +1,52 @@
+ const Domain = require('../models/Domain')
++const { NotFoundError } = require('../utils/errors')
+
+-const get = async (id) => {
+-  return Domain.findById(id).exec()
++/**
++ * Repository pattern for domain data access
++ */
++class DomainRepository {
++  async get(id) {
++    const domain = await Domain.findById(id).exec()
++    if (!domain) {
++      throw new NotFoundError('Domain not found')
++    }
++    return domain
++  }
++
++  async getAll() {
++    return Domain.find({}).sort({ created: -1 }).exec()
++  }
++
++  async create(data) {
++    const domain = new Domain(data)
++    return domain.save()
++  }
++
++  async update(id, data) {
++    return Domain.findByIdAndUpdate(id, data, { new: true }).exec()
++  }
++
++  async delete(id) {
++    return Domain.findByIdAndDelete(id).exec()
++  }
+ }
+
+-const getAll = async () => {
+-  return Domain.find({}).sort({ created: -1 }).exec()
+-}
+-
+-const create = async (data) => {
+-  const domain = new Domain(data)
+-  return domain.save()
+-}
+-
+-const update = async (id, data) => {
+-  return Domain.findByIdAndUpdate(id, data, { new: true }).exec()
+-}
+-
+-const remove = async (id) => {
+-  return Domain.findByIdAndDelete(id).exec()
+-}
+-
+-module.exports = {
+-  get,
+-  getAll,
+-  create,
+-  update,
+-  remove,
+-}
++module.exports = new DomainRepository()

@@ -1,0 +1,46 @@
+diff --git a/internal/config/options.go b/internal/config/options.go
+index 1234567..abcdefg 100644
+--- a/internal/config/options.go
++++ b/internal/config/options.go
+@@ -45,6 +45,7 @@ type Options struct {
+ 	HTTPClientTimeout          int
+ 	HTTPClientMaxBodySize      int64
+ 	HTTPClientProxy            string
++	HTTPClientRetryCount       int
+ 	AuthProxyHeader            string
+ 	AuthProxyUserCreation      bool
+ 	MaintenanceMode            bool
+@@ -120,6 +121,7 @@ func NewOptions() *Options {
+ 		HTTPClientTimeout:          getIntValue("HTTP_CLIENT_TIMEOUT", defaultHTTPClientTimeout),
+ 		HTTPClientMaxBodySize:      getInt64Value("HTTP_CLIENT_MAX_BODY_SIZE", defaultHTTPClientMaxBodySize),
+ 		HTTPClientProxy:            getStringValue("HTTP_CLIENT_PROXY", defaultHTTPClientProxy),
++		HTTPClientRetryCount:       getIntValue("HTTP_CLIENT_RETRY_COUNT", 3),
+ 		AuthProxyHeader:            getStringValue("AUTH_PROXY_HEADER", defaultAuthProxyHeader),
+ 		AuthProxyUserCreation:      getBooleanValue("AUTH_PROXY_USER_CREATION"),
+ 		MaintenanceMode:            getBooleanValue("MAINTENANCE_MODE"),
+diff --git a/internal/reader/fetcher/fetcher.go b/internal/reader/fetcher/fetcher.go
+index 1234567..abcdefg 100644
+--- a/internal/reader/fetcher/fetcher.go
++++ b/internal/reader/fetcher/fetcher.go
+@@ -85,6 +85,15 @@ func (f *Fetcher) Fetch(feedURL string) (*http.Response, error) {
+ 		return nil, fmt.Errorf("fetcher: unable to create request: %w", err)
+ 	}
+
++	// Retry logic with exponential backoff
++	var resp *http.Response
++	var lastErr error
++	for attempt := 0; attempt <= config.Opts.HTTPClientRetryCount; attempt++ {
++		resp, lastErr = f.client.Do(req)
++		if lastErr == nil && resp.StatusCode < 500 {
++			break
++		}
++		time.Sleep(time.Duration(attempt*attempt) * time.Second)
++	}
++
+-	resp, err := f.client.Do(req)
+-	if err != nil {
+-		return nil, fmt.Errorf("fetcher: unable to execute request: %w", err)
++	if lastErr != nil {
++		return nil, fmt.Errorf("fetcher: unable to execute request after %d retries: %w",
++			config.Opts.HTTPClientRetryCount, lastErr)
+ 	}

@@ -1,0 +1,76 @@
+{
+  "_comment": "Expected items that documentation should cover for Ackee",
+  "expected_items": [
+    "GraphQL API",
+    "createToken",
+    "createDomain",
+    "createRecord",
+    "createEvent",
+    "createAction",
+    "Domain",
+    "Record",
+    "Event",
+    "Action",
+    "Facts",
+    "DomainStatistics",
+    "tracker.js",
+    "ACKEE_MONGODB",
+    "ACKEE_USERNAME",
+    "ACKEE_PASSWORD",
+    "ACKEE_ALLOW_ORIGIN",
+    "permanentTokens"
+  ],
+  "categories": {
+    "api_endpoints": [
+      "POST /api (GraphQL)",
+      "GET /tracker.js",
+      "GET /.well-known/apollo/server-health"
+    ],
+    "graphql_queries": [
+      "domain",
+      "domains",
+      "event",
+      "events",
+      "facts",
+      "statistics",
+      "permanentToken",
+      "permanentTokens"
+    ],
+    "graphql_mutations": [
+      "createToken",
+      "deleteToken",
+      "createPermanentToken",
+      "deletePermanentToken",
+      "createDomain",
+      "updateDomain",
+      "deleteDomain",
+      "createRecord",
+      "updateRecord",
+      "createEvent",
+      "updateEvent",
+      "deleteEvent",
+      "createAction",
+      "updateAction"
+    ],
+    "data_models": [
+      "Domain",
+      "Record",
+      "Event",
+      "Action",
+      "Token",
+      "PermanentToken",
+      "Facts",
+      "DomainStatistics"
+    ],
+    "configuration": [
+      "ACKEE_MONGODB",
+      "ACKEE_PORT",
+      "ACKEE_USERNAME",
+      "ACKEE_PASSWORD",
+      "ACKEE_TTL",
+      "ACKEE_TRACKER",
+      "ACKEE_ALLOW_ORIGIN",
+      "ACKEE_AUTO_ORIGIN"
+    ]
+  }
+}

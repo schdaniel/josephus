@@ -1,0 +1,66 @@
+diff --git a/src/resolvers/mutations/index.js b/src/resolvers/mutations/index.js
+index 1234567..abcdefg 100644
+--- a/src/resolvers/mutations/index.js
++++ b/src/resolvers/mutations/index.js
+@@ -10,6 +10,7 @@ const deleteEvent = require('./deleteEvent')
+ const createAction = require('./createAction')
+ const updateAction = require('./updateAction')
+ const deleteAction = require('./deleteAction')
++const archiveDomain = require('./archiveDomain')
+
+ module.exports = {
+   createToken,
+@@ -23,4 +24,5 @@ module.exports = {
+   createAction,
+   updateAction,
+   deleteAction,
++  archiveDomain,
+ }
+diff --git a/src/resolvers/mutations/archiveDomain.js b/src/resolvers/mutations/archiveDomain.js
+new file mode 100644
+index 0000000..1234567
+--- /dev/null
++++ b/src/resolvers/mutations/archiveDomain.js
+@@ -0,0 +1,35 @@
++const domains = require('../../database/domains')
++
++/**
++ * Archive a domain without deleting its data.
++ * Archived domains are hidden from the dashboard but retain all records.
++ * @param {Object} _
++ * @param {Object} input - The mutation input.
++ * @param {String} input.id - Domain ID to archive.
++ * @returns {Object} Payload with success status.
++ */
++module.exports = async (_, { id }) => {
++  const domain = await domains.get(id)
++
++  if (!domain) {
++    throw new Error('Domain not found')
++  }
++
++  await domains.update(id, { archived: true })
++
++  return {
++    success: true,
++    payload: await domains.get(id)
++  }
++}
+diff --git a/src/types/Mutation.js b/src/types/Mutation.js
+index 1234567..abcdefg 100644
+--- a/src/types/Mutation.js
++++ b/src/types/Mutation.js
+@@ -45,6 +45,13 @@ module.exports = `
+     input: DeleteDomainInput!
+   ): DeleteDomainPayload!
+
++  """
++  Archive a domain. Archived domains are hidden but retain data.
++  """
++  archiveDomain(
++    id: ID!
++  ): ArchiveDomainPayload!
++
+   """
+   Create a new record.
+   """
