@@ -1,5 +1,16 @@
 # Evaluation repositories
 # These repos are cloned for documentation generation evaluation
+#
+# Fields:
+#   url: Git clone URL
+#   language: Primary programming language
+#   size: small (<50 files), medium (50-200), large (500+)
+#   description: Brief description
+#   docs_url: Public documentation website (for reference)
+#   docs_repo: GitHub owner/repo containing docs (if different from main repo)
+#   docs_path: Path to documentation in the repo (if docs are in repo)
+#   docs_format: Documentation format (markdown, asciidoc, lektor)
+#   exclude_dirs: List of directories to exclude from crawling
 
 repos:
   # Small Python project - Static CMS
