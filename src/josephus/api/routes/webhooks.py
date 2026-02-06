@@ -70,9 +70,7 @@ async def handle_github_webhook(
             "Webhook signature verification disabled in development mode",
             delivery_id=x_github_delivery,
         )
-    elif not verify_webhook_signature(
-        body, x_hub_signature_256, settings.github_webhook_secret
-    ):
+    elif not verify_webhook_signature(body, x_hub_signature_256, settings.github_webhook_secret):
         logfire.warn("Invalid webhook signature", delivery_id=x_github_delivery)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
