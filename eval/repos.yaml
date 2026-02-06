@@ -53,3 +53,16 @@ repos:
     docs_repo: taigaio/taiga-doc
     docs_path: .
     docs_format: asciidoc
+
+  # Large TypeScript project - Developer Portal
+  backstage:
+    url: https://github.com/backstage/backstage.git
+    language: typescript
+    size: large
+    description: "Open framework for building developer portals"
+    docs_url: https://backstage.io/docs/overview/what-is-backstage
+    docs_path: docs
+    exclude_dirs:
+      - architecture-decisions
+      - contribute
+      - dls
