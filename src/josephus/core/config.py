@@ -24,8 +24,9 @@ class Settings(BaseSettings):
     debug: bool = False
     log_level: str = "INFO"
 
-    # API
-    api_host: str = "0.0.0.0"
+    # API - default to localhost for development safety
+    # Set API_HOST=0.0.0.0 in production to bind to all interfaces
+    api_host: str = "127.0.0.1"
     api_port: int = 8000
     api_key: str | None = Field(
         default=None,
