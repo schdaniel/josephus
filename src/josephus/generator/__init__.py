@@ -17,6 +17,12 @@ from josephus.generator.prompts import (
     build_generation_prompt,
     build_refinement_prompt,
 )
+from josephus.generator.validation import (
+    ValidationAgent,
+    ValidationReport,
+    ValidationResult,
+    validate_and_fix_docs,
+)
 
 __all__ = [
     "DocGenerator",
@@ -27,7 +33,11 @@ __all__ = [
     "PlannedFile",
     "PlannedSection",
     "SYSTEM_PROMPT",
+    "ValidationAgent",
+    "ValidationReport",
+    "ValidationResult",
     "build_generation_prompt",
     "build_refinement_prompt",
     "generate_docs",
+    "validate_and_fix_docs",
 ]
