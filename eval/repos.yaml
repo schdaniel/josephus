@@ -17,6 +17,7 @@ repos:
     size: small
     description: "Self-hosted analytics tool"
     docs_url: https://docs.ackee.electerious.com/
+    docs_path: docs
 
   # Small Go project - RSS Reader
   miniflux:
