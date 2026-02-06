@@ -1,0 +1,32 @@
+diff --git a/lektor/cli.py b/lektor/cli.py
+index 1234567..abcdefg 100644
+--- a/lektor/cli.py
++++ b/lektor/cli.py
+@@ -150,6 +150,25 @@ def deploy_cmd(ctx, server, output_path):
+     publisher.publish(ctx.env, server, output_path)
+
+
++@cli.command("validate", short_help="Validate project structure and content.")
++@click.option("--strict", is_flag=True, help="Fail on warnings.")
++@click.pass_context
++def validate_cmd(ctx, strict):
++    """Validate the project structure, models, and content files.
++
++    This command checks for common issues like:
++    - Missing required fields in content files
++    - Invalid model references
++    - Broken internal links
++    - Orphaned attachments
++    """
++    from lektor.validation import ProjectValidator
++
++    validator = ProjectValidator(ctx.env)
++    errors, warnings = validator.validate()
++
++    if errors or (strict and warnings):
++        raise click.ClickException(f"Validation failed: {len(errors)} errors, {len(warnings)} warnings")
++
++
+ @cli.group("plugins", short_help="Manage plugins.")
+ def plugins_cmd():
+     """Manage project plugins."""

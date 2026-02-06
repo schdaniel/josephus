@@ -1,0 +1,38 @@
+diff --git a/go.mod b/go.mod
+index 1234567..abcdefg 100644
+--- a/go.mod
++++ b/go.mod
+@@ -5,15 +5,15 @@ go 1.21
+ require (
+ 	github.com/PuerkitoBio/goquery v1.8.1
+ 	github.com/gorilla/mux v1.8.0
+-	github.com/lib/pq v1.10.7
++	github.com/lib/pq v1.10.9
+ 	github.com/prometheus/client_golang v1.14.0
+-	golang.org/x/crypto v0.6.0
+-	golang.org/x/net v0.7.0
+-	golang.org/x/oauth2 v0.5.0
++	golang.org/x/crypto v0.14.0
++	golang.org/x/net v0.17.0
++	golang.org/x/oauth2 v0.13.0
+ )
+
+ require (
+ 	github.com/andybalholm/cascadia v1.3.1 // indirect
+-	github.com/golang/protobuf v1.5.2 // indirect
++	github.com/golang/protobuf v1.5.3 // indirect
+ 	google.golang.org/appengine v1.6.7 // indirect
+-	google.golang.org/protobuf v1.28.1 // indirect
++	google.golang.org/protobuf v1.31.0 // indirect
+ )
+diff --git a/go.sum b/go.sum
+index 1234567..abcdefg 100644
+--- a/go.sum
++++ b/go.sum
+@@ -1,20 +1,20 @@
+ github.com/PuerkitoBio/goquery v1.8.1 h1:uQxhNlArOIdbrH1tr0UXwdVFgDcZDrZVdcpygAcwmWM=
+ github.com/PuerkitoBio/goquery v1.8.1/go.mod h1:Q8ICL1kNUJ2sXGoAhPGUdYDJvgQgHzJsnnd3H7Ho5jQ=
+-github.com/lib/pq v1.10.7 h1:p7ZhMD+KsSRozJr34udlUrhboJwWAgCg34+/O/pDe9E=
+-github.com/lib/pq v1.10.7/go.mod h1:AlVN5x4E4T544tWzH6hKfbfQvm3HdbOxrmggDNAPY9o=
++github.com/lib/pq v1.10.9 h1:YXG7RB+JIjhP29X+OtkiDnYaXQwpS4JEWq7dtCCRUEw=
++github.com/lib/pq v1.10.9/go.mod h1:AlVN5x4E4T544tWzH6hKfbfQvm3HdbOxrmggDNAPY9o=

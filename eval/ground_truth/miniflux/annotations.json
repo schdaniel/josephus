@@ -1,0 +1,68 @@
+{
+  "_comment": "Expected items that documentation should cover for Miniflux",
+  "expected_items": [
+    "REST API v1",
+    "Fever API",
+    "Google Reader API",
+    "feeds",
+    "entries",
+    "categories",
+    "users",
+    "subscriptions",
+    "OPML import/export",
+    "DATABASE_URL",
+    "LISTEN_ADDR",
+    "POLLING_FREQUENCY",
+    "miniflux --migrate",
+    "miniflux --create-admin",
+    "OAuth2"
+  ],
+  "categories": {
+    "api_endpoints": [
+      "GET /v1/feeds",
+      "POST /v1/feeds",
+      "GET /v1/entries",
+      "PUT /v1/entries",
+      "GET /v1/categories",
+      "POST /v1/categories",
+      "GET /v1/users",
+      "POST /v1/discover",
+      "GET /v1/export",
+      "POST /v1/import",
+      "GET /healthcheck"
+    ],
+    "cli_commands": [
+      "--migrate",
+      "--create-admin",
+      "--reset-password",
+      "--refresh-feeds",
+      "--flush-sessions",
+      "--export-user-feeds",
+      "--healthcheck",
+      "--config-dump"
+    ],
+    "configuration": [
+      "DATABASE_URL",
+      "LISTEN_ADDR",
+      "BASE_URL",
+      "POLLING_FREQUENCY",
+      "BATCH_SIZE",
+      "ADMIN_USERNAME",
+      "ADMIN_PASSWORD",
+      "OAUTH2_PROVIDER",
+      "OAUTH2_CLIENT_ID",
+      "OAUTH2_CLIENT_SECRET",
+      "HTTP_CLIENT_TIMEOUT",
+      "CLEANUP_FREQUENCY_HOURS"
+    ],
+    "data_models": [
+      "User",
+      "Category",
+      "Feed",
+      "Entry",
+      "Enclosure",
+      "Icon",
+      "Subscription"
+    ]
+  }
+}

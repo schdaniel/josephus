@@ -1,9 +1,43 @@
 {
   "_comment": "Ground truth labels for PR detection evaluation. Format: repo_name -> scenario_id -> should_update_docs",
-  "example-repo": {
+  "lektor": {
+    "add-new-field-type": true,
+    "add-cli-command": true,
+    "fix-typo-in-tests": false,
+    "refactor-internal-utils": false,
+    "update-publisher-api": true,
+    "add-plugin-hook": true,
+    "bump-dependencies": false,
+    "fix-ci-workflow": false
+  },
+  "ackee": {
+    "add-graphql-mutation": true,
+    "new-statistics-endpoint": true,
+    "fix-test-flakiness": false,
+    "refactor-database-layer": false,
+    "add-env-variable": true,
+    "update-tracker-script": true,
+    "update-readme-badges": false,
+    "internal-code-cleanup": false
+  },
+  "miniflux": {
     "add-api-endpoint": true,
-    "refactor-internal": false,
-    "fix-typo-tests": false,
-    "new-feature": true
+    "new-cli-flag": true,
+    "fix-unit-tests": false,
+    "refactor-http-handler": false,
+    "add-config-option": true,
+    "update-fever-api": true,
+    "update-go-modules": false,
+    "fix-linting-errors": false
+  },
+  "taiga": {
+    "add-webhook-event": true,
+    "new-importer-support": true,
+    "fix-migration-tests": false,
+    "refactor-serializers": false,
+    "add-api-permission": true,
+    "update-auth-flow": true,
+    "bump-django-version": false,
+    "fix-admin-styling": false
   }
 }

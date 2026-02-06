@@ -1,0 +1,67 @@
+{
+  "_comment": "Expected items that documentation should cover for Lektor",
+  "expected_items": [
+    "lektor build",
+    "lektor server",
+    "lektor deploy",
+    "lektor quickstart",
+    "lektor plugins",
+    "Project",
+    "Environment",
+    "Pad",
+    "Record",
+    "Query",
+    "DataModel",
+    "Field types",
+    "Markdown",
+    "Publisher",
+    "Plugin system",
+    "project.lektorproject",
+    "alternatives",
+    "flowblocks"
+  ],
+  "categories": {
+    "cli_commands": [
+      "lektor build",
+      "lektor server",
+      "lektor deploy",
+      "lektor clean",
+      "lektor quickstart",
+      "lektor plugins add",
+      "lektor plugins remove",
+      "lektor plugins list",
+      "lektor dev shell"
+    ],
+    "core_classes": [
+      "Project",
+      "Environment",
+      "Pad",
+      "Record",
+      "Query",
+      "Database",
+      "Builder",
+      "DataModel"
+    ],
+    "field_types": [
+      "string",
+      "text",
+      "markdown",
+      "html",
+      "integer",
+      "float",
+      "boolean",
+      "date",
+      "datetime",
+      "select",
+      "flow"
+    ],
+    "configuration": [
+      "project.lektorproject",
+      "alternatives",
+      "servers",
+      "packages",
+      "excluded_assets",
+      "included_assets"
+    ]
+  }
+}

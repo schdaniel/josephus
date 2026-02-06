@@ -1,0 +1,38 @@
+diff --git a/taiga/static/admin/css/custom.css b/taiga/static/admin/css/custom.css
+index 1234567..abcdefg 100644
+--- a/taiga/static/admin/css/custom.css
++++ b/taiga/static/admin/css/custom.css
+@@ -15,7 +15,7 @@
+ }
+
+ #header {
+-    background: #417690;
++    background: #2c3e50;
+     color: #ffc;
+     padding: 10px 40px;
+ }
+@@ -25,8 +25,8 @@
+ }
+
+ .module h2, .module caption, .inline-group h2 {
+-    background: #79aec8;
+-    color: #fff;
++    background: #34495e;
++    color: #ecf0f1;
+     padding: 8px 12px;
+ }
+
+@@ -35,3 +35,11 @@
+     border-radius: 4px;
+     padding: 8px 15px;
+ }
++
++/* Fix alignment issues in forms */
++.form-row {
++    padding: 10px 12px;
++    border-bottom: 1px solid #eee;
++}
++
++.aligned label {
++    width: 170px;
++}
