@@ -1,0 +1,28 @@
+<prompt>
+<instruction>Revise the following documentation to better adhere to the guidelines.</instruction>
+
+<original_documentation>
+{{ content }}
+</original_documentation>
+
+<guidelines>
+{{ guidelines }}
+</guidelines>
+
+<deviations_to_fix>
+{% for deviation in deviations %}
+<deviation>{{ deviation }}</deviation>
+{% endfor %}
+</deviations_to_fix>
+
+<requirements>
+<requirement>Address each deviation listed above</requirement>
+<requirement>Preserve all factual content and code examples</requirement>
+<requirement>Only change formatting, tone, or structure as needed</requirement>
+<requirement>Do not add new information or remove existing information</requirement>
+</requirements>
+
+<output_format>
+Return the revised documentation content only, without any additional commentary or explanation.
+</output_format>
+</prompt>

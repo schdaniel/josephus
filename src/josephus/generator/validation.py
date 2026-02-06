@@ -6,6 +6,7 @@ import logfire
 
 from josephus.eval.judge import GuidelinesJudge
 from josephus.eval.metrics import GuidelinesAdherenceScores
+from josephus.generator.prompts import build_fix_prompt, get_fix_system_prompt
 from josephus.llm import LLMProvider
 
 
@@ -83,38 +84,6 @@ class ValidationReport:
                 for r in self.file_results
             ],
         }
-
-
-FIX_SYSTEM_PROMPT = """You are an expert technical writer. Your task is to revise documentation to better adhere to the provided guidelines.
-
-You will receive:
-1. The original documentation content
-2. The guidelines it should follow
-3. A list of specific deviations that need to be fixed
-
-Revise the documentation to address the deviations while preserving all factual content and information. Only change what's necessary to adhere to the guidelines."""
-
-FIX_PROMPT_TEMPLATE = """Revise the following documentation to better adhere to the guidelines.
-
-<original_documentation>
-{content}
-</original_documentation>
-
-<guidelines>
-{guidelines}
-</guidelines>
-
-<deviations_to_fix>
-{deviations}
-</deviations_to_fix>
-
-Instructions:
-1. Address each deviation listed above
-2. Preserve all factual content and code examples
-3. Only change formatting, tone, or structure as needed
-4. Do not add new information or remove existing information
-
-Return the revised documentation content only, without any additional commentary or explanation."""
 
 
 class ValidationAgent:
@@ -245,18 +214,16 @@ class ValidationAgent:
         if not deviations:
             return content
 
-        deviations_text = "\n".join(f"- {d}" for d in deviations)
-
-        prompt = FIX_PROMPT_TEMPLATE.format(
+        prompt = build_fix_prompt(
             content=content,
             guidelines=guidelines,
-            deviations=deviations_text,
+            deviations=deviations,
         )
 
         try:
             response = await self.llm.generate(
                 prompt=prompt,
-                system=FIX_SYSTEM_PROMPT,
+                system=get_fix_system_prompt(),
                 max_tokens=len(content) * 2,  # Allow some expansion
                 temperature=0.3,  # Lower temperature for more consistent fixes
             )

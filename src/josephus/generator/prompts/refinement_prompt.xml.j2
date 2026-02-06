@@ -1,0 +1,20 @@
+<prompt>
+<instruction>Refine the following documentation based on the feedback provided.</instruction>
+
+<current_documentation>
+{% for path, content in generated_docs.items() %}
+<file path="{{ path }}">
+{{ content }}
+</file>
+{% endfor %}
+</current_documentation>
+
+<feedback>
+{{ feedback }}
+</feedback>
+
+<output_format>
+<instruction>Return the refined documentation using file markers (&lt;!-- FILE: path/to/file.md --&gt;).</instruction>
+<instruction>Only include files that need changes.</instruction>
+</output_format>
+</prompt>
