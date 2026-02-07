@@ -6,7 +6,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-from jinja2 import Environment, FileSystemLoader, select_autoescape
+from jinja2 import Environment, FileSystemLoader
 
 
 def get_template_dirs() -> list[Path]:
@@ -46,10 +46,7 @@ class TemplateLoader:
 
         self._env = Environment(
             loader=FileSystemLoader([str(d) for d in template_dirs]),
-            autoescape=select_autoescape(
-                enabled_extensions=("xml", "j2", "xml.j2"),
-                default_for_string=False,
-            ),
+            autoescape=False,  # Disable autoescape for prompt templates
             trim_blocks=True,
             lstrip_blocks=True,
         )

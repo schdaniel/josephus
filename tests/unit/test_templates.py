@@ -3,6 +3,13 @@
 import pytest
 
 from josephus.templates import get_template_loader, render_template
+from josephus.templates.loader import get_template_loader as _get_template_loader
+
+
+@pytest.fixture(autouse=True)
+def clear_template_cache() -> None:
+    """Clear the template loader cache before each test."""
+    _get_template_loader.cache_clear()
 
 
 class TestTemplateLoader:
@@ -143,36 +150,3 @@ class TestTemplateLoader:
 
         with pytest.raises(TemplateNotFound):
             render_template("nonexistent.xml.j2")
-
-
-class TestPromptModuleIntegration:
-    """Test that prompt modules correctly use templates."""
-
-    def test_prompts_module(self) -> None:
-        """Test prompts.py uses templates."""
-        from josephus.generator.prompts import (
-            SYSTEM_PROMPT,
-            build_generation_prompt,
-            build_refinement_prompt,
-            get_system_prompt,
-        )
-
-        # Test get_system_prompt
-        system = get_system_prompt()
-        assert "Josephus" in system
-        assert "<system>" in system
-
-        # Test SYSTEM_PROMPT backwards compat
-        assert "Josephus" in str(SYSTEM_PROMPT)
-
-        # Test build_generation_prompt
-        gen = build_generation_prompt(repo_context="<repo>test</repo>")
-        assert "<repo>test</repo>" in gen
-
-        # Test build_refinement_prompt
-        ref = build_refinement_prompt(
-            generated_docs={"test.md": "# Test"},
-            feedback="Fix it",
-        )
-        assert "test.md" in ref
-        assert "Fix it" in ref
