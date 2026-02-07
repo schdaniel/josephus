@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from josephus.core.config import get_settings
 from josephus.core.service import JosephusService
 from josephus.db.models import Job, JobStatus, Repository
+from josephus.security import sanitize_error_message
 from josephus.worker.celery_app import celery_app
 
 
@@ -150,17 +151,19 @@ async def _generate_documentation_async(
             }
 
         except Exception as e:
+            # Log full error details internally for debugging
             logfire.error(
                 "Documentation generation failed",
                 job_id=job_id,
                 error=str(e),
+                exc_info=True,
             )
 
-            # Update job with failure
+            # Update job with sanitized error message (no sensitive info)
             if job:
                 job.status = JobStatus.FAILED
                 job.completed_at = datetime.utcnow()
-                job.error_message = str(e)
+                job.error_message = sanitize_error_message(e)
                 await session.commit()
 
             # Retry on transient errors
@@ -257,16 +260,19 @@ async def _analyze_pull_request_async(
             }
 
         except Exception as e:
+            # Log full error details internally for debugging
             logfire.error(
                 "PR analysis failed",
                 job_id=job_id,
                 error=str(e),
+                exc_info=True,
             )
 
+            # Update job with sanitized error message (no sensitive info)
             if job:
                 job.status = JobStatus.FAILED
                 job.completed_at = datetime.utcnow()
-                job.error_message = str(e)
+                job.error_message = sanitize_error_message(e)
                 await session.commit()
 
             raise task.retry(exc=e, countdown=60) from None
