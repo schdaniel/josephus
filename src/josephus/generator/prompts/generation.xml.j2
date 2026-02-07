@@ -1,0 +1,83 @@
+<prompt>
+<instruction>Generate comprehensive customer-facing documentation for this repository.</instruction>
+
+<repository_context>
+{{ repo_context }}
+</repository_context>
+
+{% if audience_context %}
+<target_audience>
+{{ audience_context }}
+</target_audience>
+{% endif %}
+
+{% if guidelines %}
+<user_guidelines>
+{{ guidelines }}
+</user_guidelines>
+{% endif %}
+
+{% if existing_docs %}
+<existing_documentation>
+{{ existing_docs }}
+</existing_documentation>
+<note>Consider the existing documentation style and content, but feel free to improve or restructure.</note>
+{% endif %}
+
+{% if structure_plan %}
+<documentation_structure_plan>
+{{ structure_plan }}
+</documentation_structure_plan>
+
+<important>
+Follow the structure plan above. Create exactly the files listed with the specified sections.
+</important>
+
+<output_instructions>
+<instruction>Generate documentation files using file markers</instruction>
+<format>
+&lt;!-- FILE: path/to/file.md --&gt;
+# Title
+
+Content...
+</format>
+
+<requirements>
+<requirement>Create ALL files specified in the structure plan</requirement>
+<requirement>Include ALL sections listed for each file</requirement>
+<requirement>Maintain the specified order</requirement>
+<requirement>Start each file with &lt;!-- FILE: path/to/file.md --&gt; marker</requirement>
+<requirement>Write complete, well-structured documentation for each file</requirement>
+</requirements>
+</output_instructions>
+{% else %}
+<output_instructions>
+<instruction>Generate documentation files using file markers</instruction>
+<example_format>
+&lt;!-- FILE: docs/index.md --&gt;
+# Project Name
+
+Welcome to the project documentation...
+
+&lt;!-- FILE: docs/getting-started.md --&gt;
+# Getting Started
+
+## Installation
+...
+
+&lt;!-- FILE: docs/features/feature-a.md --&gt;
+# Feature A
+...
+</example_format>
+
+<requirements>
+<requirement>Include at minimum: index.md (overview), getting-started.md (installation and quickstart)</requirement>
+<requirement>Add feature documentation for each major user-facing feature</requirement>
+<requirement>Use clear section headings</requirement>
+<requirement>Include code examples where appropriate</requirement>
+<requirement>Start each file with &lt;!-- FILE: path/to/file.md --&gt; marker</requirement>
+<requirement>Write complete, well-structured documentation for each file</requirement>
+</requirements>
+</output_instructions>
+{% endif %}
+</prompt>

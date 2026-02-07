@@ -7,6 +7,7 @@ import logfire
 from josephus.eval.judge import GuidelinesJudge
 from josephus.eval.metrics import GuidelinesAdherenceScores
 from josephus.llm import LLMProvider
+from josephus.templates import render_template
 
 
 @dataclass
@@ -85,36 +86,41 @@ class ValidationReport:
         }
 
 
-FIX_SYSTEM_PROMPT = """You are an expert technical writer. Your task is to revise documentation to better adhere to the provided guidelines.
+def get_fix_system_prompt() -> str:
+    """Get the system prompt for documentation fixing.
 
-You will receive:
-1. The original documentation content
-2. The guidelines it should follow
-3. A list of specific deviations that need to be fixed
+    Returns:
+        Rendered system prompt
+    """
+    return render_template("fix_system.xml.j2")
 
-Revise the documentation to address the deviations while preserving all factual content and information. Only change what's necessary to adhere to the guidelines."""
 
-FIX_PROMPT_TEMPLATE = """Revise the following documentation to better adhere to the guidelines.
+def build_fix_prompt(
+    content: str,
+    guidelines: str,
+    deviations: list[str],
+) -> str:
+    """Build prompt for fixing documentation to adhere to guidelines.
 
-<original_documentation>
-{content}
-</original_documentation>
+    Args:
+        content: Original documentation content
+        guidelines: Guidelines to follow
+        deviations: List of specific deviations to fix
 
-<guidelines>
-{guidelines}
-</guidelines>
+    Returns:
+        Formatted prompt string
+    """
+    return render_template(
+        "fix.xml.j2",
+        content=content,
+        guidelines=guidelines,
+        deviations=deviations,
+    )
 
-<deviations_to_fix>
-{deviations}
-</deviations_to_fix>
 
-Instructions:
-1. Address each deviation listed above
-2. Preserve all factual content and code examples
-3. Only change formatting, tone, or structure as needed
-4. Do not add new information or remove existing information
-
-Return the revised documentation content only, without any additional commentary or explanation."""
+# Backwards compatibility
+FIX_SYSTEM_PROMPT = get_fix_system_prompt()
+FIX_PROMPT_TEMPLATE = None  # Deprecated, use build_fix_prompt instead
 
 
 class ValidationAgent:
@@ -245,18 +251,16 @@ class ValidationAgent:
         if not deviations:
             return content
 
-        deviations_text = "\n".join(f"- {d}" for d in deviations)
-
-        prompt = FIX_PROMPT_TEMPLATE.format(
+        prompt = build_fix_prompt(
             content=content,
             guidelines=guidelines,
-            deviations=deviations_text,
+            deviations=deviations,
         )
 
         try:
             response = await self.llm.generate(
                 prompt=prompt,
-                system=FIX_SYSTEM_PROMPT,
+                system=get_fix_system_prompt(),
                 max_tokens=len(content) * 2,  # Allow some expansion
                 temperature=0.3,  # Lower temperature for more consistent fixes
             )
