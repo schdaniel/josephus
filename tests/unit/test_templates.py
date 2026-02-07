@@ -1,10 +1,8 @@
 """Unit tests for the template system."""
 
-from pathlib import Path
-
 import pytest
 
-from josephus.templates import TemplateLoader, get_template_loader, render_template
+from josephus.templates import get_template_loader, render_template
 
 
 class TestTemplateLoader:
