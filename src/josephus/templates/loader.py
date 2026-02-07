@@ -44,9 +44,12 @@ class TemplateLoader:
         for d in template_dirs:
             d.mkdir(parents=True, exist_ok=True)
 
+        # autoescape=False is safe here because templates generate LLM prompts,
+        # not HTML for browser rendering - no XSS risk as output is not rendered
+        # in a web context, and content is repository code/docs, not user HTML.
         self._env = Environment(
             loader=FileSystemLoader([str(d) for d in template_dirs]),
-            autoescape=False,  # Disable autoescape for prompt templates
+            autoescape=False,  # nosec B701
             trim_blocks=True,
             lstrip_blocks=True,
         )
