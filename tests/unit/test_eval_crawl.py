@@ -111,4 +111,3 @@ class TestIntegration:
         for name, config in repos.items():
             for field in required_fields:
                 assert field in config, f"Repo {name} missing field: {field}"
-
