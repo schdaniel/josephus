@@ -50,3 +50,6 @@ repos:
     size: medium
     description: "Agile project management platform"
     docs_url: https://docs.taiga.io/
+    docs_repo: taigaio/taiga-doc
+    docs_path: .
+    docs_format: asciidoc
