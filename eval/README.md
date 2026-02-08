@@ -6,14 +6,13 @@ This directory contains the evaluation dataset for measuring documentation quali
 
 ```
 eval/
-├── repos.yaml           # Repository configuration
 ├── repos/               # Repository snapshots to evaluate
 │   ├── small-cli-tool/  # Simple: <50 files
 │   ├── medium-api/      # Medium: 50-200 files
 │   └── large-monorepo/  # Large: 500+ files
-├── ground_truth/        # Reference documentation
+├── ground_truth/        # Human-written ideal documentation
 │   └── <repo-name>/
-│       ├── crawled_docs/    # Crawled documentation from GitHub
+│       ├── expected_docs/   # What good docs look like
 │       └── annotations.json # Feature coverage checklist
 ├── pr_scenarios/        # PRs with known doc relevance
 │   ├── should_update/   # PRs that need doc changes
@@ -46,66 +45,14 @@ python -m josephus.eval --dataset eval --save-baseline baseline.json
 
 ## Adding New Repos
 
-1. Add repository configuration to `repos.yaml`:
-   ```yaml
-   my-repo:
-     url: https://github.com/owner/repo.git
-     language: python
-     size: small  # small (<50 files), medium (50-200), large (500+)
-     description: "Brief description"
-     docs_url: https://docs.example.com/  # Public docs URL (for reference)
-     docs_path: docs  # Path to docs in the repo
-     # Optional: docs_repo if docs are in a different repo
-     # docs_repo: owner/docs-repo
-     # Optional: docs_format if not markdown
-     # docs_format: asciidoc  # or lektor
-     # Optional: exclude specific directories
-     # exclude_dirs:
-     #   - contributing
-     #   - internal
-   ```
-
-2. Crawl the documentation:
-   ```bash
-   python -m josephus.eval.crawl --repos my-repo
-   ```
-
+1. Add repository snapshot to `repos/<name>/`
+2. Create `ground_truth/<name>/expected_docs/` with reference documentation
 3. Create `ground_truth/<name>/annotations.json` with expected items:
    ```json
    {
-     "expected_items": ["function_a", "ClassB", "endpoint_c"],
-     "categories": {
-       "api_endpoints": ["GET /api/v1/items", "POST /api/v1/items"],
-       "core_classes": ["ItemService", "ItemRepository"]
-     }
+     "expected_items": ["function_a", "ClassB", "endpoint_c"]
    }
    ```
-
-## Crawling Documentation
-
-The `josephus.eval.crawl` module fetches documentation from GitHub repositories:
-
-```bash
-# List all repos with their doc sources and status
-python -m josephus.eval.crawl --list
-
-# Crawl all repos
-python -m josephus.eval.crawl
-
-# Crawl specific repos
-python -m josephus.eval.crawl --repos ackee miniflux
-
-# Force re-crawl (overwrite existing)
-python -m josephus.eval.crawl --repos ackee --force
-
-# Limit files per repo (default: 200)
-python -m josephus.eval.crawl --max-files 100
-```
-
-Supported documentation formats:
-- **markdown**: `.md`, `.mdx`, `.markdown` files (default)
-- **asciidoc**: `.adoc`, `.asciidoc`, `.asc` files
-- **lektor**: `contents.lr` files (Lektor CMS format)
 
 ## PR Scenarios
 

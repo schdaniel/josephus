@@ -8,75 +8,52 @@ import logfire
 
 from josephus.eval.metrics import GuidelinesAdherenceScores, JudgeScores
 from josephus.llm import LLMProvider, get_provider
-from josephus.templates import render_template
+
+JUDGE_SYSTEM_PROMPT = """You are an expert documentation evaluator. Your task is to assess the quality of AI-generated documentation against ground truth reference documentation and source code.
+
+You will evaluate documentation on four dimensions:
+1. Factual accuracy: Are all claims supported by the source code?
+2. Completeness: Are all features from the ground truth covered?
+3. Clarity: Would a non-technical user understand this?
+4. No hallucinations: Are there any invented features or incorrect behavior described?
+
+Always respond with valid JSON in the specified format."""
 
 
-def get_judge_system_prompt() -> str:
-    """Get the system prompt for documentation judging.
+JUDGE_PROMPT_TEMPLATE = """Evaluate the following AI-generated documentation against the ground truth reference.
 
-    Returns:
-        Rendered system prompt
-    """
-    return render_template("judge_system.xml.j2")
+<generated_documentation>
+{generated}
+</generated_documentation>
 
+<ground_truth_reference>
+{expected}
+</ground_truth_reference>
 
-def build_judge_prompt(
-    generated: str,
-    expected: str,
-    code_context: str,
-) -> str:
-    """Build prompt for documentation evaluation.
+<source_code_context>
+{code_context}
+</source_code_context>
 
-    Args:
-        generated: Generated documentation content
-        expected: Ground truth reference documentation
-        code_context: Relevant source code for verification
+Rate the generated documentation on each dimension from 1-5:
+- 1: Very poor / completely wrong
+- 2: Poor / mostly wrong
+- 3: Acceptable / partially correct
+- 4: Good / mostly correct
+- 5: Excellent / fully correct
 
-    Returns:
-        Formatted prompt string
-    """
-    return render_template(
-        "judge.xml.j2",
-        generated=generated,
-        expected=expected,
-        code_context=code_context[:50000],  # Limit code context size
-    )
+Return your evaluation as JSON with this exact structure:
+{{
+    "accuracy": <1-5>,
+    "completeness": <1-5>,
+    "clarity": <1-5>,
+    "hallucinations": <1-5>,
+    "issues": ["list of specific issues found, if any"]
+}}
 
-
-def get_guidelines_judge_system_prompt() -> str:
-    """Get the system prompt for guidelines adherence judging.
-
-    Returns:
-        Rendered system prompt
-    """
-    return render_template("guidelines_judge_system.xml.j2")
-
-
-def build_guidelines_judge_prompt(
-    documentation: str,
-    guidelines: str,
-) -> str:
-    """Build prompt for guidelines adherence evaluation.
-
-    Args:
-        documentation: Generated documentation content
-        guidelines: Guidelines the documentation should follow
-
-    Returns:
-        Formatted prompt string
-    """
-    return render_template(
-        "guidelines_judge.xml.j2",
-        documentation=documentation[:50000],  # Limit size
-        guidelines=guidelines,
-    )
-
-
-# Backwards compatibility
-JUDGE_SYSTEM_PROMPT = get_judge_system_prompt()
-JUDGE_PROMPT_TEMPLATE = None  # Deprecated, use build_judge_prompt instead
-GUIDELINES_JUDGE_SYSTEM_PROMPT = get_guidelines_judge_system_prompt()
-GUIDELINES_JUDGE_PROMPT_TEMPLATE = None  # Deprecated, use build_guidelines_judge_prompt instead
+Important:
+- For "hallucinations", 5 means NO hallucinations (perfect), 1 means many hallucinations
+- Be strict but fair in your assessment
+- List specific issues in the "issues" array"""
 
 
 class DocumentationJudge:
@@ -115,10 +92,10 @@ class DocumentationJudge:
         """
         provider = await self._get_provider()
 
-        prompt = build_judge_prompt(
+        prompt = JUDGE_PROMPT_TEMPLATE.format(
             generated=generated,
             expected=expected,
-            code_context=code_context,
+            code_context=code_context[:50000],  # Limit code context size
         )
 
         logfire.info(
@@ -130,7 +107,7 @@ class DocumentationJudge:
 
         response = await provider.generate(
             prompt=prompt,
-            system=get_judge_system_prompt(),
+            system=JUDGE_SYSTEM_PROMPT,
             max_tokens=1024,
             temperature=0.1,  # Low temperature for consistent evaluation
         )
@@ -232,6 +209,49 @@ async def evaluate_documentation(
         await judge.close()
 
 
+GUIDELINES_JUDGE_SYSTEM_PROMPT = """You are an expert documentation reviewer. Your task is to evaluate whether generated documentation adheres to specified guidelines.
+
+You will assess how well the documentation follows the provided guidelines across multiple dimensions:
+1. Tone adherence: Does the writing style match the guidelines' tone requirements?
+2. Format adherence: Does the structure/format match what's specified in guidelines?
+3. Content adherence: Does the content cover topics/aspects specified in guidelines?
+4. Overall adherence: How well does the documentation follow all guidelines overall?
+
+Always respond with valid JSON in the specified format."""
+
+
+GUIDELINES_JUDGE_PROMPT_TEMPLATE = """Evaluate whether the following documentation adheres to the specified guidelines.
+
+<documentation>
+{documentation}
+</documentation>
+
+<guidelines>
+{guidelines}
+</guidelines>
+
+Rate the documentation's adherence to guidelines on each dimension from 1-5:
+- 1: Very poor adherence / completely ignores guidelines
+- 2: Poor adherence / mostly ignores guidelines
+- 3: Partial adherence / follows some guidelines
+- 4: Good adherence / follows most guidelines
+- 5: Excellent adherence / fully follows guidelines
+
+Return your evaluation as JSON with this exact structure:
+{{
+    "tone_adherence": <1-5>,
+    "format_adherence": <1-5>,
+    "content_adherence": <1-5>,
+    "overall_adherence": <1-5>,
+    "deviations": ["list of specific guideline deviations found, if any"]
+}}
+
+Important:
+- Be specific about which guidelines are or aren't followed
+- List concrete deviations in the "deviations" array
+- Consider both explicit and implicit guideline requirements"""
+
+
 class GuidelinesJudge:
     """LLM-based judge for evaluating guidelines adherence."""
 
@@ -266,8 +286,8 @@ class GuidelinesJudge:
         """
         provider = await self._get_provider()
 
-        prompt = build_guidelines_judge_prompt(
-            documentation=documentation,
+        prompt = GUIDELINES_JUDGE_PROMPT_TEMPLATE.format(
+            documentation=documentation[:50000],  # Limit size
             guidelines=guidelines,
         )
 
@@ -279,7 +299,7 @@ class GuidelinesJudge:
 
         response = await provider.generate(
             prompt=prompt,
-            system=get_guidelines_judge_system_prompt(),
+            system=GUIDELINES_JUDGE_SYSTEM_PROMPT,
             max_tokens=1024,
             temperature=0.1,  # Low temperature for consistent evaluation
         )

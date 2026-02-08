@@ -1,15 +1,25 @@
 """Prompts for documentation generation."""
 
-from josephus.templates import render_template
+SYSTEM_PROMPT = """You are Josephus, an expert technical writer specializing in creating \
+clear, user-friendly documentation for software projects.
 
+Your task is to generate customer-facing documentation based on the provided codebase. \
+Focus on helping users understand and use the software, not on internal implementation details.
 
-def get_system_prompt() -> str:
-    """Get the system prompt for documentation generation.
+Guidelines:
+- Write for the target audience as specified (adjust tone and depth accordingly)
+- Use clear, concise language appropriate for the audience
+- Include practical examples where helpful
+- Organize content logically with clear headings
+- Focus on "what" and "how" for users, not "why" for developers
+- Skip internal utilities, test helpers, and developer-only features
+- Generate valid markdown with proper formatting
 
-    Returns:
-        Rendered system prompt
-    """
-    return render_template("system.xml.j2")
+Output format:
+- Return documentation as multiple markdown files separated by file markers
+- Use the format: <!-- FILE: path/to/file.md --> followed by the file content
+- Use standard documentation structure (getting-started, installation, features, etc.)
+- Each file should be self-contained but link to related pages where appropriate"""
 
 
 def build_generation_prompt(
@@ -31,14 +41,105 @@ def build_generation_prompt(
     Returns:
         Formatted prompt string
     """
-    return render_template(
-        "generation.xml.j2",
-        repo_context=repo_context,
-        guidelines=guidelines,
-        existing_docs=existing_docs,
-        structure_plan=structure_plan,
-        audience_context=audience_context,
-    )
+    parts = [
+        "Generate comprehensive customer-facing documentation for this repository.",
+        "",
+        repo_context,
+    ]
+
+    if audience_context:
+        parts.extend(
+            [
+                "",
+                "<target_audience>",
+                audience_context,
+                "</target_audience>",
+            ]
+        )
+
+    if guidelines:
+        parts.extend(
+            [
+                "",
+                "<user_guidelines>",
+                guidelines,
+                "</user_guidelines>",
+            ]
+        )
+
+    if existing_docs:
+        parts.extend(
+            [
+                "",
+                "<existing_documentation>",
+                existing_docs,
+                "</existing_documentation>",
+                "",
+                "Consider the existing documentation style and content, but feel free to improve or restructure.",
+            ]
+        )
+
+    if structure_plan:
+        parts.extend(
+            [
+                "",
+                "<documentation_structure_plan>",
+                structure_plan,
+                "</documentation_structure_plan>",
+                "",
+                "IMPORTANT: Follow the structure plan above. Create exactly the files listed with the specified sections.",
+            ]
+        )
+        parts.extend(
+            [
+                "",
+                "Generate documentation files using file markers. Format:",
+                "",
+                "<!-- FILE: path/to/file.md -->",
+                "# Title",
+                "",
+                "Content...",
+                "",
+                "Requirements:",
+                "- Create ALL files specified in the structure plan",
+                "- Include ALL sections listed for each file",
+                "- Maintain the specified order",
+                "- Start each file with <!-- FILE: path/to/file.md --> marker",
+                "- Write complete, well-structured documentation for each file",
+            ]
+        )
+    else:
+        parts.extend(
+            [
+                "",
+                "Generate documentation files using file markers. Example format:",
+                "",
+                "<!-- FILE: docs/index.md -->",
+                "# Project Name",
+                "",
+                "Welcome to the project documentation...",
+                "",
+                "<!-- FILE: docs/getting-started.md -->",
+                "# Getting Started",
+                "",
+                "## Installation",
+                "...",
+                "",
+                "<!-- FILE: docs/features/feature-a.md -->",
+                "# Feature A",
+                "...",
+                "",
+                "Requirements:",
+                "- Include at minimum: index.md (overview), getting-started.md (installation & quickstart)",
+                "- Add feature documentation for each major user-facing feature",
+                "- Use clear section headings",
+                "- Include code examples where appropriate",
+                "- Start each file with <!-- FILE: path/to/file.md --> marker",
+                "- Write complete, well-structured documentation for each file",
+            ]
+        )
+
+    return "\n".join(parts)
 
 
 def build_refinement_prompt(
@@ -54,27 +155,19 @@ def build_refinement_prompt(
     Returns:
         Formatted prompt string
     """
-    return render_template(
-        "refinement.xml.j2",
-        generated_docs=generated_docs,
-        feedback=feedback,
+    docs_text = "\n\n".join(
+        f"### {path}\n```markdown\n{content}\n```" for path, content in generated_docs.items()
     )
 
+    return f"""Refine the following documentation based on the feedback provided.
 
-# Backwards compatibility - lazily evaluated property
-class _SystemPromptProxy:
-    """Proxy for lazy loading of SYSTEM_PROMPT."""
+<current_documentation>
+{docs_text}
+</current_documentation>
 
-    _value: str | None = None
+<feedback>
+{feedback}
+</feedback>
 
-    def __str__(self) -> str:
-        if self._value is None:
-            self._value = get_system_prompt()
-        return self._value
-
-    def __repr__(self) -> str:
-        return str(self)
-
-
-# For backwards compatibility with code that imports SYSTEM_PROMPT directly
-SYSTEM_PROMPT = _SystemPromptProxy()
+Return the refined documentation using file markers (<!-- FILE: path/to/file.md -->).
+Only include files that need changes."""

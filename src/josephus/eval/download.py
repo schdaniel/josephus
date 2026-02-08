@@ -1,15 +1,11 @@
 """Download and manage evaluation repositories."""
 
-import re
 import shutil
-import subprocess  # nosec B404 - subprocess needed for git operations
+import subprocess
 import sys
 from pathlib import Path
 
 import yaml
-
-# Pattern for valid git URLs (https or git@)
-_VALID_GIT_URL_PATTERN = re.compile(r"^(https://[\w.-]+/[\w./-]+\.git|git@[\w.-]+:[\w./-]+\.git)$")
 
 
 def get_project_root() -> Path:
@@ -40,14 +36,6 @@ def get_repos_dir(repos_dir: Path | None = None) -> Path:
     return repos_dir
 
 
-def _validate_git_url(url: str) -> bool:
-    """Validate that a URL is a safe git URL.
-
-    Only allows https:// and git@ URLs to prevent command injection.
-    """
-    return bool(_VALID_GIT_URL_PATTERN.match(url))
-
-
 def download_repo(
     name: str,
     url: str,
@@ -56,11 +44,6 @@ def download_repo(
     depth: int = 1,
 ) -> bool:
     """Download a single repository."""
-    # Validate URL to prevent command injection
-    if not _validate_git_url(url):
-        print(f"  ERROR: Invalid git URL for {name}: {url}")
-        return False
-
     repo_path = repos_dir / name
 
     if repo_path.exists():
@@ -73,7 +56,7 @@ def download_repo(
 
     print(f"  Cloning {name} from {url}...")
     cmd = ["git", "clone", "--depth", str(depth), url, str(repo_path)]
-    result = subprocess.run(cmd, capture_output=True, text=True)  # nosec B603
+    result = subprocess.run(cmd, capture_output=True, text=True)
 
     if result.returncode != 0:
         print(f"  ERROR: Failed to clone {name}: {result.stderr}")
@@ -157,7 +140,7 @@ def update_repos(
 
         print(f"  Updating {name}...")
         cmd = ["git", "-C", str(repo_path), "pull", "--ff-only"]
-        result = subprocess.run(cmd, capture_output=True, text=True)  # nosec B603
+        result = subprocess.run(cmd, capture_output=True, text=True)
 
         if result.returncode != 0:
             print(f"  ERROR: Failed to update {name}")
