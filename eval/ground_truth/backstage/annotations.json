@@ -1,0 +1,123 @@
+{
+  "_comment": "Expected items that documentation should cover for Backstage",
+  "expected_items": [
+    "Software Catalog",
+    "Software Templates",
+    "TechDocs",
+    "Search",
+    "Kubernetes",
+    "Plugin System",
+    "Backend System",
+    "createBackend",
+    "createBackendModule",
+    "createPlugin",
+    "createApiFactory",
+    "useApi",
+    "Entity",
+    "Component",
+    "API",
+    "System",
+    "Domain",
+    "Resource",
+    "catalog-info.yaml",
+    "app-config.yaml",
+    "Authentication",
+    "Permissions"
+  ],
+  "categories": {
+    "core_features": [
+      "Software Catalog",
+      "Software Templates",
+      "TechDocs",
+      "Search",
+      "Kubernetes",
+      "CI/CD Integrations",
+      "Cost Insights",
+      "API Docs"
+    ],
+    "backend_apis": [
+      "createBackend",
+      "createBackendModule",
+      "createBackendPlugin",
+      "createServiceFactory",
+      "createServiceRef",
+      "coreServices",
+      "httpRouterServiceRef",
+      "databaseServiceRef",
+      "loggerServiceRef",
+      "configServiceRef",
+      "cacheServiceRef",
+      "schedulerServiceRef"
+    ],
+    "frontend_apis": [
+      "createPlugin",
+      "createApiFactory",
+      "createApiRef",
+      "createRouteRef",
+      "createRoutableExtension",
+      "createComponentExtension",
+      "useApi",
+      "useRouteRef",
+      "useEntity",
+      "useAsyncEntity"
+    ],
+    "catalog_model": [
+      "Entity",
+      "Component",
+      "API",
+      "System",
+      "Domain",
+      "Resource",
+      "Group",
+      "User",
+      "Location",
+      "Template"
+    ],
+    "configuration": [
+      "app-config.yaml",
+      "app-config.local.yaml",
+      "app-config.production.yaml",
+      "catalog-info.yaml",
+      "mkdocs.yml",
+      "template.yaml"
+    ],
+    "cli_commands": [
+      "backstage-cli create-app",
+      "backstage-cli create-plugin",
+      "backstage-cli build",
+      "backstage-cli build:backend",
+      "backstage-cli package",
+      "backstage-cli repo"
+    ],
+    "authentication": [
+      "SignInPage",
+      "AuthProvider",
+      "OAuth2",
+      "GitHub Auth",
+      "Google Auth",
+      "Okta Auth",
+      "Microsoft Auth",
+      "Guest Access"
+    ],
+    "permissions": [
+      "Permission Framework",
+      "PolicyDecision",
+      "createPermission",
+      "ResourcePermission",
+      "BasicPermission",
+      "PermissionPolicy"
+    ],
+    "integrations": [
+      "GitHub",
+      "GitLab",
+      "Bitbucket",
+      "Azure DevOps",
+      "AWS",
+      "GCP",
+      "Kubernetes",
+      "ArgoCD",
+      "Jenkins",
+      "CircleCI"
+    ]
+  }
+}
