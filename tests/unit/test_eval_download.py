@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from josephus.eval.download import (
+    _validate_git_url,
     download_all,
     download_repo,
     get_repos_dir,
@@ -247,3 +248,52 @@ class TestListRepos:
         captured = capsys.readouterr()
         assert "repo1" in captured.out
         assert "python" in captured.out
+
+
+class TestValidateGitUrl:
+    """Tests for git URL validation."""
+
+    def test_valid_https_url(self) -> None:
+        """Test valid HTTPS git URLs."""
+        assert _validate_git_url("https://github.com/user/repo.git") is True
+        assert _validate_git_url("https://gitlab.com/user/repo.git") is True
+        assert _validate_git_url("https://bitbucket.org/user/repo.git") is True
+
+    def test_valid_ssh_url(self) -> None:
+        """Test valid SSH git URLs."""
+        assert _validate_git_url("git@github.com:user/repo.git") is True
+        assert _validate_git_url("git@gitlab.com:user/repo.git") is True
+
+    def test_invalid_url_no_git_suffix(self) -> None:
+        """Test that URLs without .git suffix are rejected."""
+        assert _validate_git_url("https://github.com/user/repo") is False
+
+    def test_invalid_url_file_protocol(self) -> None:
+        """Test that file:// URLs are rejected."""
+        assert _validate_git_url("file:///path/to/repo.git") is False
+
+    def test_invalid_url_command_injection(self) -> None:
+        """Test that command injection attempts are rejected."""
+        assert _validate_git_url("https://github.com/user/repo.git; rm -rf /") is False
+        assert _validate_git_url("https://github.com/user/repo.git && malicious") is False
+        assert _validate_git_url("$(whoami)@github.com:user/repo.git") is False
+
+    def test_invalid_url_empty(self) -> None:
+        """Test that empty URLs are rejected."""
+        assert _validate_git_url("") is False
+
+    def test_download_repo_invalid_url(self, tmp_path: Path) -> None:
+        """Test that download_repo rejects invalid URLs."""
+        result = download_repo(
+            name="test-repo",
+            url="file:///etc/passwd",
+            repos_dir=tmp_path,
+        )
+        assert result is False
+
+        result = download_repo(
+            name="test-repo",
+            url="https://github.com/user/repo",  # missing .git
+            repos_dir=tmp_path,
+        )
+        assert result is False

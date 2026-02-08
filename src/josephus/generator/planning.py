@@ -8,6 +8,7 @@ import logfire
 
 from josephus.analyzer import RepoAnalysis, format_for_llm
 from josephus.llm import LLMProvider
+from josephus.templates import render_template
 
 
 @dataclass
@@ -65,15 +66,13 @@ class DocStructurePlan:
         return "\n".join(lines)
 
 
-PLANNING_SYSTEM_PROMPT = """You are Josephus, an expert technical writer planning documentation structure.
+def get_planning_system_prompt() -> str:
+    """Get the system prompt for documentation planning.
 
-Your task is to analyze the codebase and plan the optimal documentation structure BEFORE writing any documentation. Consider:
-- The type of project (library, CLI tool, web app, API, etc.)
-- The target audience (developers, end-users, administrators)
-- Standard documentation conventions for this type of project
-- Logical information flow and navigation
-
-Output a JSON structure plan with files and their sections. Each file should have a clear purpose."""
+    Returns:
+        Rendered system prompt
+    """
+    return render_template("planning_system.xml.j2")
 
 
 def build_planning_prompt(
@@ -89,61 +88,15 @@ def build_planning_prompt(
     Returns:
         Formatted prompt string
     """
-    parts = [
-        "Analyze this repository and plan the optimal documentation structure.",
-        "",
-        repo_context,
-    ]
-
-    if guidelines:
-        parts.extend(
-            [
-                "",
-                "<user_guidelines>",
-                guidelines,
-                "</user_guidelines>",
-            ]
-        )
-
-    parts.extend(
-        [
-            "",
-            "Plan the documentation structure by outputting a JSON object with this schema:",
-            "",
-            "```json",
-            "{",
-            '  "rationale": "Brief explanation of why this structure fits the project",',
-            '  "files": [',
-            "    {",
-            '      "path": "docs/index.md",',
-            '      "title": "Project Name Documentation",',
-            '      "description": "Main landing page with overview and navigation",',
-            '      "order": 1,',
-            '      "sections": [',
-            '        {"heading": "Overview", "description": "What the project does", "order": 1},',
-            '        {"heading": "Quick Start", "description": "Fastest path to using it", "order": 2}',
-            "      ]",
-            "    }",
-            "  ]",
-            "}",
-            "```",
-            "",
-            "Requirements:",
-            "- Include at minimum: index.md (overview), getting-started.md (installation/setup)",
-            "- Add appropriate files based on project type:",
-            "  - Libraries: API reference, usage examples, configuration",
-            "  - CLI tools: Commands reference, configuration, examples",
-            "  - Web apps: Features, deployment, configuration",
-            "  - APIs: Endpoints, authentication, request/response examples",
-            "- Order files logically (index first, getting started second, etc.)",
-            "- Each file should have 2-6 meaningful sections",
-            "- Use descriptive section headings",
-            "",
-            "Output ONLY the JSON object, no additional text.",
-        ]
+    return render_template(
+        "planning.xml.j2",
+        repo_context=repo_context,
+        guidelines=guidelines,
     )
 
-    return "\n".join(parts)
+
+# Backwards compatibility
+PLANNING_SYSTEM_PROMPT = get_planning_system_prompt()
 
 
 def parse_structure_plan(content: str) -> DocStructurePlan:
