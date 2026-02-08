@@ -20,6 +20,9 @@ repos:
     size: small
     description: "Static content management system"
     docs_url: https://www.getlektor.com/docs/
+    docs_repo: lektor/lektor-website
+    docs_path: content/docs
+    docs_format: lektor
 
   # Small JavaScript project - Analytics
   ackee:
