@@ -40,6 +40,8 @@ repos:
     size: small
     description: "Minimalist feed reader"
     docs_url: https://miniflux.app/docs/
+    docs_repo: miniflux/website
+    docs_path: content/docs
 
   # Medium Python project - Project Management
   taiga:
