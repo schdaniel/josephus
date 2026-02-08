@@ -9,7 +9,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
 from fastapi.openapi.utils import get_openapi
-from fastapi.responses import JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from slowapi.errors import RateLimitExceeded
 
 from josephus import __version__
@@ -172,7 +172,7 @@ def create_app() -> FastAPI:
 
     # Add custom docs endpoints
     @app.get("/docs", include_in_schema=False)
-    async def custom_swagger_ui_html() -> JSONResponse:
+    async def custom_swagger_ui_html() -> HTMLResponse:
         return get_swagger_ui_html(
             openapi_url="/api/openapi.json",
             title=f"{app.title} - Swagger UI",
@@ -181,7 +181,7 @@ def create_app() -> FastAPI:
         )
 
     @app.get("/redoc", include_in_schema=False)
-    async def redoc_html() -> JSONResponse:
+    async def redoc_html() -> HTMLResponse:
         return get_redoc_html(
             openapi_url="/api/openapi.json",
             title=f"{app.title} - ReDoc",
