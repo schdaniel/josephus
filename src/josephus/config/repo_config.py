@@ -3,7 +3,7 @@
 Configuration structure:
     .josephus/
         config.yml       # Deterministic settings (output_dir, format, etc.)
-        guidelines.xml   # Documentation guidelines in XML format (includes scope, structure, style)
+        guidelines.md    # Natural language documentation guidelines (includes scope, structure, style)
 """
 
 import contextlib
@@ -16,7 +16,7 @@ from josephus.github import GitHubClient
 # Config directory and file names
 CONFIG_DIR = ".josephus"
 CONFIG_FILE = "config.yml"
-GUIDELINES_FILE = "guidelines.xml"
+GUIDELINES_FILE = "guidelines.md"
 
 
 class DeterministicConfig(BaseModel):
@@ -44,7 +44,7 @@ class RepoConfig(BaseModel):
     """Repository-level configuration for documentation generation.
 
     Combines deterministic settings from config.yml with natural language
-    content from guidelines.xml.
+    content from guidelines.md.
     """
 
     # Deterministic settings
@@ -53,10 +53,10 @@ class RepoConfig(BaseModel):
         description="Deterministic configuration settings",
     )
 
-    # Natural language content from guidelines.xml
+    # Natural language content from guidelines.md
     guidelines: str = Field(
         default="",
-        description="Documentation guidelines from guidelines.xml (includes scope, structure, style)",
+        description="Documentation guidelines from guidelines.md (includes scope, structure, style)",
     )
 
     def to_prompt_context(self) -> str:
@@ -127,7 +127,7 @@ async def load_repo_config(
 
     Looks for configuration in .josephus/ directory:
     - config.yml for deterministic settings
-    - guidelines.xml for documentation guidelines (includes scope, structure, style)
+    - guidelines.md for documentation guidelines (includes scope, structure, style)
 
     Args:
         github_client: GitHub API client.

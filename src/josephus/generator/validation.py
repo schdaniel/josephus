@@ -7,7 +7,6 @@ import logfire
 from josephus.eval.judge import GuidelinesJudge
 from josephus.eval.metrics import GuidelinesAdherenceScores
 from josephus.llm import LLMProvider
-from josephus.templates import render_template
 
 
 @dataclass
@@ -86,41 +85,36 @@ class ValidationReport:
         }
 
 
-def get_fix_system_prompt() -> str:
-    """Get the system prompt for documentation fixing.
+FIX_SYSTEM_PROMPT = """You are an expert technical writer. Your task is to revise documentation to better adhere to the provided guidelines.
 
-    Returns:
-        Rendered system prompt
-    """
-    return render_template("fix_system.xml.j2")
+You will receive:
+1. The original documentation content
+2. The guidelines it should follow
+3. A list of specific deviations that need to be fixed
 
+Revise the documentation to address the deviations while preserving all factual content and information. Only change what's necessary to adhere to the guidelines."""
 
-def build_fix_prompt(
-    content: str,
-    guidelines: str,
-    deviations: list[str],
-) -> str:
-    """Build prompt for fixing documentation to adhere to guidelines.
+FIX_PROMPT_TEMPLATE = """Revise the following documentation to better adhere to the guidelines.
 
-    Args:
-        content: Original documentation content
-        guidelines: Guidelines to follow
-        deviations: List of specific deviations to fix
+<original_documentation>
+{content}
+</original_documentation>
 
-    Returns:
-        Formatted prompt string
-    """
-    return render_template(
-        "fix.xml.j2",
-        content=content,
-        guidelines=guidelines,
-        deviations=deviations,
-    )
+<guidelines>
+{guidelines}
+</guidelines>
 
+<deviations_to_fix>
+{deviations}
+</deviations_to_fix>
 
-# Backwards compatibility
-FIX_SYSTEM_PROMPT = get_fix_system_prompt()
-FIX_PROMPT_TEMPLATE = None  # Deprecated, use build_fix_prompt instead
+Instructions:
+1. Address each deviation listed above
+2. Preserve all factual content and code examples
+3. Only change formatting, tone, or structure as needed
+4. Do not add new information or remove existing information
+
+Return the revised documentation content only, without any additional commentary or explanation."""
 
 
 class ValidationAgent:
@@ -251,16 +245,18 @@ class ValidationAgent:
         if not deviations:
             return content
 
-        prompt = build_fix_prompt(
+        deviations_text = "\n".join(f"- {d}" for d in deviations)
+
+        prompt = FIX_PROMPT_TEMPLATE.format(
             content=content,
             guidelines=guidelines,
-            deviations=deviations,
+            deviations=deviations_text,
         )
 
         try:
             response = await self.llm.generate(
                 prompt=prompt,
-                system=get_fix_system_prompt(),
+                system=FIX_SYSTEM_PROMPT,
                 max_tokens=len(content) * 2,  # Allow some expansion
                 temperature=0.3,  # Lower temperature for more consistent fixes
             )

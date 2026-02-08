@@ -1,9 +1,5 @@
 """Security module for Josephus."""
 
-from josephus.security.errors import (
-    get_error_code,
-    sanitize_error_message,
-)
 from josephus.security.scanner import (
     ScanResult,
     SecretFoundError,
@@ -18,8 +14,6 @@ __all__ = [
     "SecretFoundError",
     "SecretMatch",
     "SecretType",
-    "get_error_code",
-    "sanitize_error_message",
     "scan_content",
     "scan_files",
 ]

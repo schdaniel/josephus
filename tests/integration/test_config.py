@@ -22,7 +22,7 @@ output_format: markdown
 create_pr: true
 branch_prefix: docs/auto
 """,
-            ".josephus/guidelines.xml": """
+            ".josephus/guidelines.md": """
 # Documentation Guidelines
 
 ## Target Audience
@@ -94,7 +94,7 @@ Use Mermaid for sequence diagrams and flowcharts.
         mock_client = AsyncMock()
 
         files = {
-            ".josephus/guidelines.xml": """
+            ".josephus/guidelines.md": """
 Write documentation for beginners.
 Keep it simple and include lots of examples.
 """,
@@ -167,7 +167,7 @@ Use Python examples""",
 
         files = {
             ".josephus/config.yml": "{{not valid yaml",
-            ".josephus/guidelines.xml": "Valid guidelines content",
+            ".josephus/guidelines.md": "Valid guidelines content",
         }
 
         async def mock_get_file(**kwargs: object) -> str | None:

@@ -154,7 +154,7 @@ output_dir: docs
 output_format: markdown
 create_pr: true
 """,
-            ".josephus/guidelines.xml": """
+            ".josephus/guidelines.md": """
 # Documentation Guidelines
 
 Write clear, concise documentation for developers.

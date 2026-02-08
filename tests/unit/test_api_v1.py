@@ -5,7 +5,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from josephus.api.errors import APIError, api_error_handler
 from josephus.api.routes import api_v1
 from josephus.db.models import Job, JobStatus, Repository
 
@@ -13,7 +12,6 @@ from josephus.db.models import Job, JobStatus, Repository
 def create_test_app() -> FastAPI:
     """Create minimal test app without logfire instrumentation."""
     app = FastAPI()
-    app.add_exception_handler(APIError, api_error_handler)
     app.include_router(api_v1.router, prefix="/api/v1")
     return app
 
