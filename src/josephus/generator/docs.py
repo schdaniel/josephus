@@ -9,7 +9,7 @@ import logfire
 
 from josephus.analyzer import AudienceInference, RepoAnalysis, format_for_llm, infer_audience
 from josephus.generator.planning import DocPlanner, DocStructurePlan
-from josephus.generator.prompts import SYSTEM_PROMPT, build_generation_prompt
+from josephus.generator.prompts import build_generation_prompt, get_system_prompt
 from josephus.llm import LLMProvider, LLMResponse
 
 
@@ -128,7 +128,7 @@ class DocGenerator:
         # Step 5: Generate documentation
         response = await self.llm.generate(
             prompt=prompt,
-            system=SYSTEM_PROMPT,
+            system=get_system_prompt(),
             max_tokens=config.max_tokens,
             temperature=config.temperature,
         )
