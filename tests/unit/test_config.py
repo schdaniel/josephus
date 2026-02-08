@@ -184,7 +184,7 @@ class TestLoadRepoConfig:
 
         files = {
             ".josephus/config.yml": "output_dir: api-docs",
-            ".josephus/guidelines.md": """# Guidelines
+            ".josephus/guidelines.xml": """# Guidelines
 Write for developers
 
 ## Scope
@@ -218,7 +218,7 @@ Use TypeScript""",
         mock_client = AsyncMock()
 
         files = {
-            ".josephus/guidelines.md": "Just some guidelines",
+            ".josephus/guidelines.xml": "Just some guidelines",
         }
 
         async def mock_get_file(**kwargs: object) -> str | None:

@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+This is the template for .josephus/guidelines.xml
+Place this file in your repository's .josephus/ directory to customize documentation generation.
+-->
+<guidelines>
+    <audience>
+        <!--
+        Describe who will read this documentation.
+        Examples: developers, end-users, system administrators, etc.
+        -->
+        <description>Technical developers integrating with our API.</description>
+    </audience>
+
+    <tone>
+        <!--
+        Describe the writing style.
+        Examples: formal/informal, technical/approachable, concise/detailed
+        -->
+        <description>Technical but approachable. Use clear language and avoid jargon where possible.</description>
+    </tone>
+
+    <scope>
+        <include>
+            <!-- What should be documented -->
+            <item>All public APIs and their parameters</item>
+            <item>Installation and setup instructions</item>
+            <item>Common use cases and examples</item>
+            <item>Error handling and troubleshooting</item>
+        </include>
+        <exclude>
+            <!-- What should NOT be documented -->
+            <item>Internal implementation details</item>
+            <item>Deprecated features</item>
+            <item>Admin-only functionality</item>
+        </exclude>
+    </scope>
+
+    <structure>
+        <!-- Preferred documentation organization -->
+        <item>Start with a quick-start guide</item>
+        <item>Group related features together</item>
+        <item>Include a comprehensive API reference</item>
+        <item>Add a troubleshooting/FAQ section</item>
+    </structure>
+
+    <style>
+        <code_examples>
+            <!-- Preferred languages and styles for code examples -->
+            <item>Use Python for backend examples</item>
+            <item>Use JavaScript/TypeScript for frontend examples</item>
+            <item>Include complete, runnable examples when possible</item>
+        </code_examples>
+        <formatting>
+            <!-- Preferred formatting conventions -->
+            <item>Use tables for parameter documentation</item>
+            <item>Include request/response examples for APIs</item>
+            <item>Use Mermaid diagrams for workflows</item>
+        </formatting>
+    </style>
+</guidelines>
