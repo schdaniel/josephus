@@ -3,11 +3,12 @@
 from typing import Any
 
 import logfire
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from josephus.api.auth import verify_api_key
+from josephus.api.errors import ErrorCode, NotFoundError
 from josephus.api.rate_limit import RATE_LIMITS, limiter
 from josephus.db.session import get_session
 from josephus.worker import celery_app
@@ -142,9 +143,10 @@ async def get_job_status(
     # Get job
     job = await session.get(Job, job_id)
     if not job:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Job {job_id} not found",
+        raise NotFoundError(
+            resource="Job",
+            resource_id=job_id,
+            code=ErrorCode.JOB_NOT_FOUND,
         )
 
     # Get repository info
