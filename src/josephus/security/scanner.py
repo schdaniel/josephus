@@ -6,24 +6,28 @@ from enum import Enum
 
 
 class SecretType(Enum):
-    """Types of secrets that can be detected."""
+    """Types of secrets that can be detected.
+
+    Note: The string values below are descriptive labels for secret types,
+    not actual secrets. Bandit B105 alerts on these are false positives.
+    """
 
     AWS_ACCESS_KEY = "AWS Access Key"
-    AWS_SECRET_KEY = "AWS Secret Key"
-    GITHUB_TOKEN = "GitHub Token"
+    AWS_SECRET_KEY = "AWS Secret Key"  # nosec B105 - label, not a secret
+    GITHUB_TOKEN = "GitHub Token"  # nosec B105 - label, not a secret
     GITHUB_APP_KEY = "GitHub App Private Key"
     OPENAI_API_KEY = "OpenAI API Key"
     ANTHROPIC_API_KEY = "Anthropic API Key"
-    SLACK_TOKEN = "Slack Token"
+    SLACK_TOKEN = "Slack Token"  # nosec B105 - label, not a secret
     SLACK_WEBHOOK = "Slack Webhook URL"
     STRIPE_API_KEY = "Stripe API Key"
     TWILIO_API_KEY = "Twilio API Key"
     SENDGRID_API_KEY = "SendGrid API Key"
     DATABASE_URL = "Database Connection String"
     GENERIC_API_KEY = "Generic API Key"
-    GENERIC_SECRET = "Generic Secret/Password"
+    GENERIC_SECRET = "Generic Secret/Password"  # nosec B105 - label, not a secret
     PRIVATE_KEY = "Private Key"
-    JWT_TOKEN = "JWT Token"
+    JWT_TOKEN = "JWT Token"  # nosec B105 - label, not a secret
     BASIC_AUTH = "Basic Auth Credentials"
 
 
