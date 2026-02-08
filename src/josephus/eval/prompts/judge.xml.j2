@@ -1,0 +1,43 @@
+<prompt>
+<instruction>Evaluate the following AI-generated documentation against the ground truth reference.</instruction>
+
+<generated_documentation>
+{{ generated }}
+</generated_documentation>
+
+<ground_truth_reference>
+{{ expected }}
+</ground_truth_reference>
+
+<source_code_context>
+{{ code_context }}
+</source_code_context>
+
+<rating_scale>
+<description>Rate the generated documentation on each dimension from 1-5:</description>
+<score value="1">Very poor / completely wrong</score>
+<score value="2">Poor / mostly wrong</score>
+<score value="3">Acceptable / partially correct</score>
+<score value="4">Good / mostly correct</score>
+<score value="5">Excellent / fully correct</score>
+</rating_scale>
+
+<output_format>
+<description>Return your evaluation as JSON with this exact structure:</description>
+<schema>
+{
+    "accuracy": &lt;1-5&gt;,
+    "completeness": &lt;1-5&gt;,
+    "clarity": &lt;1-5&gt;,
+    "hallucinations": &lt;1-5&gt;,
+    "issues": ["list of specific issues found, if any"]
+}
+</schema>
+</output_format>
+
+<important_notes>
+<note>For "hallucinations", 5 means NO hallucinations (perfect), 1 means many hallucinations</note>
+<note>Be strict but fair in your assessment</note>
+<note>List specific issues in the "issues" array</note>
+</important_notes>
+</prompt>

@@ -1,0 +1,51 @@
+<prompt>
+<instruction>Analyze this repository and plan the optimal documentation structure.</instruction>
+
+<repository_context>
+{{ repo_context }}
+</repository_context>
+
+{% if guidelines %}
+<user_guidelines>
+{{ guidelines }}
+</user_guidelines>
+{% endif %}
+
+<output_schema>
+<description>Plan the documentation structure by outputting a JSON object with this schema:</description>
+<example>
+```json
+{
+  "rationale": "Brief explanation of why this structure fits the project",
+  "files": [
+    {
+      "path": "docs/index.md",
+      "title": "Project Name Documentation",
+      "description": "Main landing page with overview and navigation",
+      "order": 1,
+      "sections": [
+        {"heading": "Overview", "description": "What the project does", "order": 1},
+        {"heading": "Quick Start", "description": "Fastest path to using it", "order": 2}
+      ]
+    }
+  ]
+}
+```
+</example>
+</output_schema>
+
+<requirements>
+<requirement>Include at minimum: index.md (overview), getting-started.md (installation/setup)</requirement>
+<requirement>Add appropriate files based on project type:
+  - Libraries: API reference, usage examples, configuration
+  - CLI tools: Commands reference, configuration, examples
+  - Web apps: Features, deployment, configuration
+  - APIs: Endpoints, authentication, request/response examples
+</requirement>
+<requirement>Order files logically (index first, getting started second, etc.)</requirement>
+<requirement>Each file should have 2-6 meaningful sections</requirement>
+<requirement>Use descriptive section headings</requirement>
+</requirements>
+
+<important>Output ONLY the JSON object, no additional text.</important>
+</prompt>

@@ -1,0 +1,79 @@
+<guidelines_template>
+<!--
+This is the template for .josephus/guidelines.md
+Place this file in your repository's .josephus/ directory to customize documentation generation.
+Rendered with Jinja2 - customize the default values below.
+-->
+
+<section name="audience">
+<title>Audience</title>
+<description>Describe who will read this documentation</description>
+<examples>developers, end-users, system administrators, etc.</examples>
+<default>{{ audience | default("Technical developers integrating with our API.") }}</default>
+</section>
+
+<section name="tone">
+<title>Tone</title>
+<description>Describe the writing style</description>
+<examples>formal/informal, technical/approachable, concise/detailed</examples>
+<default>{{ tone | default("Technical but approachable. Use clear language and avoid jargon where possible.") }}</default>
+</section>
+
+<section name="scope">
+<title>Scope</title>
+
+<subsection name="include">
+<title>Include</title>
+<description>What should be documented</description>
+<items>
+{% for item in include_items | default(["All public APIs and their parameters", "Installation and setup instructions", "Common use cases and examples", "Error handling and troubleshooting"]) %}
+<item>{{ item }}</item>
+{% endfor %}
+</items>
+</subsection>
+
+<subsection name="exclude">
+<title>Exclude</title>
+<description>What should NOT be documented</description>
+<items>
+{% for item in exclude_items | default(["Internal implementation details", "Deprecated features", "Admin-only functionality"]) %}
+<item>{{ item }}</item>
+{% endfor %}
+</items>
+</subsection>
+</section>
+
+<section name="structure">
+<title>Structure</title>
+<description>Preferred documentation organization</description>
+<items>
+{% for item in structure_items | default(["Start with a quick-start guide", "Group related features together", "Include a comprehensive API reference", "Add a troubleshooting/FAQ section"]) %}
+<item>{{ item }}</item>
+{% endfor %}
+</items>
+</section>
+
+<section name="style">
+<title>Style</title>
+
+<subsection name="code_examples">
+<title>Code Examples</title>
+<description>Preferred languages and styles for code examples</description>
+<items>
+{% for item in code_example_items | default(["Use Python for backend examples", "Use JavaScript/TypeScript for frontend examples", "Include complete, runnable examples when possible"]) %}
+<item>{{ item }}</item>
+{% endfor %}
+</items>
+</subsection>
+
+<subsection name="formatting">
+<title>Formatting</title>
+<description>Preferred formatting conventions</description>
+<items>
+{% for item in formatting_items | default(["Use tables for parameter documentation", "Include request/response examples for APIs", "Use Mermaid diagrams for workflows"]) %}
+<item>{{ item }}</item>
+{% endfor %}
+</items>
+</subsection>
+</section>
+</guidelines_template>

@@ -1,0 +1,39 @@
+<prompt>
+<instruction>Evaluate whether the following documentation adheres to the specified guidelines.</instruction>
+
+<documentation>
+{{ documentation }}
+</documentation>
+
+<guidelines>
+{{ guidelines }}
+</guidelines>
+
+<rating_scale>
+<description>Rate the documentation's adherence to guidelines on each dimension from 1-5:</description>
+<score value="1">Very poor adherence / completely ignores guidelines</score>
+<score value="2">Poor adherence / mostly ignores guidelines</score>
+<score value="3">Partial adherence / follows some guidelines</score>
+<score value="4">Good adherence / follows most guidelines</score>
+<score value="5">Excellent adherence / fully follows guidelines</score>
+</rating_scale>
+
+<output_format>
+<description>Return your evaluation as JSON with this exact structure:</description>
+<schema>
+{
+    "tone_adherence": &lt;1-5&gt;,
+    "format_adherence": &lt;1-5&gt;,
+    "content_adherence": &lt;1-5&gt;,
+    "overall_adherence": &lt;1-5&gt;,
+    "deviations": ["list of specific guideline deviations found, if any"]
+}
+</schema>
+</output_format>
+
+<important_notes>
+<note>Be specific about which guidelines are or aren't followed</note>
+<note>List concrete deviations in the "deviations" array</note>
+<note>Consider both explicit and implicit guideline requirements</note>
+</important_notes>
+</prompt>
