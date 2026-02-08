@@ -188,8 +188,13 @@ def crawl_github_docs(
                     if docs_path and docs_path != ".":
                         rel_path = item_path[len(docs_path) :].lstrip("/")
 
+                    # Validate output path to prevent path traversal
+                    output_path = (output_dir / rel_path).resolve()
+                    if not output_path.is_relative_to(output_dir.resolve()):
+                        print(f"    Skipping suspicious path: {rel_path}")
+                        continue
+
                     # Save file preserving directory structure
-                    output_path = output_dir / rel_path
                     output_path.parent.mkdir(parents=True, exist_ok=True)
                     output_path.write_text(content)
 
