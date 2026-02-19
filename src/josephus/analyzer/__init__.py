@@ -7,7 +7,9 @@ from josephus.analyzer.repo import (
     AnalyzedFile,
     RepoAnalysis,
     RepoAnalyzer,
+    format_files_for_llm,
     format_for_llm,
+    format_for_llm_compressed,
 )
 
 __all__ = [
@@ -21,6 +23,8 @@ __all__ = [
     "RepoAnalyzer",
     "analyze_local_repo",
     "filter_tree",
+    "format_files_for_llm",
     "format_for_llm",
+    "format_for_llm_compressed",
     "infer_audience",
 ]

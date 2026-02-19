@@ -288,6 +288,149 @@ class RepoAnalyzer:
                 self._render_tree(subtree, new_prefix, lines)
 
 
+def format_for_llm_compressed(
+    analysis: RepoAnalysis,
+    guidelines: str = "",
+    preview_lines: int = 20,
+) -> str:
+    """Format repository analysis as compressed XML context for Claude.
+
+    Only includes the first N lines of each file (capturing imports, docstrings,
+    and signatures) plus metadata about total size. ~10x smaller than full format.
+
+    Args:
+        analysis: Repository analysis result
+        guidelines: User's documentation guidelines
+        preview_lines: Number of lines to include per file
+
+    Returns:
+        XML-formatted string for LLM context (compressed)
+    """
+    parts = [
+        f'<repository name="{analysis.repository.name}">',
+        f"<description>{analysis.repository.description or 'No description'}</description>",
+        f"<language>{analysis.repository.language or 'Unknown'}</language>",
+        f"<default_branch>{analysis.repository.default_branch}</default_branch>",
+        "",
+        "<directory_structure>",
+        analysis.directory_structure,
+        "</directory_structure>",
+        "",
+    ]
+
+    if guidelines:
+        parts.extend(
+            [
+                "<documentation_guidelines>",
+                guidelines,
+                "</documentation_guidelines>",
+                "",
+            ]
+        )
+
+    parts.append("<files>")
+
+    for file in analysis.files:
+        lines = file.content.splitlines()
+        total_lines = len(lines)
+        preview = "\n".join(lines[:preview_lines])
+        truncated = total_lines > preview_lines
+
+        parts.extend(
+            [
+                f'<file path="{file.path}" total_lines="{total_lines}" tokens="{file.token_count}">',
+                preview,
+            ]
+        )
+        if truncated:
+            parts.append(f"\n... ({total_lines - preview_lines} more lines)")
+        parts.extend(
+            [
+                "</file>",
+                "",
+            ]
+        )
+
+    parts.append("</files>")
+
+    if analysis.truncated or analysis.skipped_files:
+        parts.extend(
+            [
+                "",
+                "<note>",
+                f"Analysis was truncated. {len(analysis.skipped_files)} files were skipped ",
+                "due to token limits. Focus on the included files for documentation.",
+                "</note>",
+            ]
+        )
+
+    parts.append("</repository>")
+
+    return "\n".join(parts)
+
+
+def format_files_for_llm(
+    analysis: RepoAnalysis,
+    file_paths: list[str],
+    guidelines: str = "",
+) -> str:
+    """Format only a subset of files from the analysis as XML context for Claude.
+
+    Used for per-page generation where only relevant source files are needed.
+
+    Args:
+        analysis: Repository analysis result
+        file_paths: Paths of files to include (full content)
+        guidelines: User's documentation guidelines
+
+    Returns:
+        XML-formatted string with only the specified files
+    """
+    # Build a lookup for quick access
+    files_by_path = {f.path: f for f in analysis.files}
+
+    parts = [
+        f'<repository name="{analysis.repository.name}">',
+        f"<description>{analysis.repository.description or 'No description'}</description>",
+        f"<language>{analysis.repository.language or 'Unknown'}</language>",
+        "",
+        "<directory_structure>",
+        analysis.directory_structure,
+        "</directory_structure>",
+        "",
+    ]
+
+    if guidelines:
+        parts.extend(
+            [
+                "<documentation_guidelines>",
+                guidelines,
+                "</documentation_guidelines>",
+                "",
+            ]
+        )
+
+    parts.append("<files>")
+
+    for path in file_paths:
+        file = files_by_path.get(path)
+        if file is None:
+            continue
+        parts.extend(
+            [
+                f'<file path="{file.path}">',
+                file.content,
+                "</file>",
+                "",
+            ]
+        )
+
+    parts.append("</files>")
+    parts.append("</repository>")
+
+    return "\n".join(parts)
+
+
 def format_for_llm(analysis: RepoAnalysis, guidelines: str = "") -> str:
     """Format repository analysis as XML context for Claude.
 

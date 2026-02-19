@@ -1,0 +1,55 @@
+<prompt>
+<instruction>Generate a single documentation page for the file described below.</instruction>
+
+<repository_context>
+{{ repo_context }}
+</repository_context>
+
+{% if audience_context %}
+<target_audience>
+{{ audience_context }}
+</target_audience>
+{% endif %}
+
+{% if guidelines %}
+<user_guidelines>
+{{ guidelines }}
+</user_guidelines>
+{% endif %}
+
+<full_documentation_plan>
+{{ structure_plan }}
+</full_documentation_plan>
+
+<current_file>
+<path>{{ planned_file.path }}</path>
+<title>{{ planned_file.title }}</title>
+<description>{{ planned_file.description }}</description>
+{% if planned_file.sections %}
+<sections>
+{% for section in planned_file.sections %}
+  <section order="{{ section.order }}">{{ section.heading }}: {{ section.description }}</section>
+{% endfor %}
+</sections>
+{% endif %}
+</current_file>
+
+{% if generated_manifest %}
+<already_generated_pages>
+{% for path, title in generated_manifest.items() %}
+<page path="{{ path }}">{{ title }}</page>
+{% endfor %}
+</already_generated_pages>
+<note>You may link to these already-generated pages where appropriate using relative markdown links.</note>
+{% endif %}
+
+<output_instructions>
+<instruction>Generate ONLY the content for this single documentation page</instruction>
+<instruction>Start with: &lt;!-- FILE: {{ planned_file.path }} --&gt;</instruction>
+<instruction>Write complete, well-structured documentation for this page</instruction>
+<instruction>Include all sections listed above</instruction>
+<instruction>Use relative links to reference other pages in the documentation plan</instruction>
+<instruction>If you discover topics in the source code that deserve their own documentation page but are not in the plan, emit a marker AFTER the file content in this exact format:
+&lt;!-- SUGGEST_PAGE: path/to/page.md | Page Title | Brief description | source_file1.py, source_file2.py --&gt;</instruction>
+</output_instructions>
+</prompt>

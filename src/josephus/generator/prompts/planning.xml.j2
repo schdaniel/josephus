@@ -23,6 +23,7 @@
       "title": "Project Name Documentation",
       "description": "Main landing page with overview and navigation",
       "order": 1,
+      "source_files": ["README.md", "src/main.py", "pyproject.toml"],
       "sections": [
         {"heading": "Overview", "description": "What the project does", "order": 1},
         {"heading": "Quick Start", "description": "Fastest path to using it", "order": 2}
@@ -45,6 +46,7 @@
 <requirement>Order files logically (index first, getting started second, etc.)</requirement>
 <requirement>Each file should have 2-6 meaningful sections</requirement>
 <requirement>Use descriptive section headings</requirement>
+<requirement>For each file, list the source_files (paths from the repository) most relevant for writing that documentation page. These should be the actual source code files whose content is needed to write accurate documentation for that page.</requirement>
 </requirements>
 
 <important>Output ONLY the JSON object, no additional text.</important>

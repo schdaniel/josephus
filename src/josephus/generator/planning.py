@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 
 import logfire
 
-from josephus.analyzer import RepoAnalysis, format_for_llm
+from josephus.analyzer import RepoAnalysis, format_for_llm_compressed
 from josephus.llm import LLMProvider
 from josephus.templates import render_template
 
@@ -28,6 +28,7 @@ class PlannedFile:
     title: str
     description: str
     sections: list[PlannedSection] = field(default_factory=list)
+    source_files: list[str] = field(default_factory=list)
     order: int = 0
 
 
@@ -60,6 +61,9 @@ class DocStructurePlan:
                 lines.append("Sections:")
                 for section in sorted(f.sections, key=lambda x: x.order):
                     lines.append(f"  - {section.heading}: {section.description}")
+
+            if f.source_files:
+                lines.append(f"Source files: {', '.join(f.source_files)}")
 
             lines.append("")
 
@@ -147,6 +151,7 @@ def parse_structure_plan(content: str) -> DocStructurePlan:
                 title=file_data.get("title", "Untitled"),
                 description=file_data.get("description", ""),
                 sections=sections,
+                source_files=file_data.get("source_files", []),
                 order=file_data.get("order", i + 1),
             )
         )
@@ -190,8 +195,8 @@ class DocPlanner:
             files_in_analysis=len(analysis.files),
         )
 
-        # Format repository for LLM
-        repo_context = format_for_llm(analysis, guidelines)
+        # Format repository for LLM (compressed — planner only needs structure)
+        repo_context = format_for_llm_compressed(analysis, guidelines)
 
         # Build prompt
         prompt = build_planning_prompt(repo_context, guidelines)

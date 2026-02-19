@@ -2,15 +2,33 @@
 
 import json
 import re
-from dataclasses import dataclass
+from collections import deque
+from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
 
 import logfire
+import tiktoken
 
-from josephus.analyzer import AudienceInference, RepoAnalysis, format_for_llm, infer_audience
-from josephus.generator.planning import DocPlanner, DocStructurePlan
-from josephus.generator.prompts import build_generation_prompt, get_system_prompt
+from josephus.analyzer import (
+    AudienceInference,
+    RepoAnalysis,
+    format_files_for_llm,
+    format_for_llm,
+    infer_audience,
+)
+from josephus.generator.planning import DocPlanner, DocStructurePlan, PlannedFile
+from josephus.generator.prompts import (
+    build_generation_prompt,
+    build_page_generation_prompt,
+    get_system_prompt,
+)
 from josephus.llm import LLMProvider, LLMResponse
+
+# Budget constants
+MODEL_CONTEXT_LIMIT = 200_000
+OUTPUT_BUDGET = 16_384
+SYSTEM_PROMPT_BUDGET = 2_000
+SAFETY_MARGIN = 5_000
 
 
 @dataclass
@@ -23,6 +41,7 @@ class GeneratedDocs:
     audience: AudienceInference | None = None
     total_files: int = 0
     total_chars: int = 0
+    llm_responses: list[LLMResponse] = field(default_factory=list)
 
     def __post_init__(self) -> None:
         self.total_files = len(self.files)
@@ -62,6 +81,19 @@ class DocGenerator:
             llm: LLM provider for generation
         """
         self.llm = llm
+        self._tokenizer = tiktoken.get_encoding("cl100k_base")
+
+    def _count_tokens(self, text: str) -> int:
+        """Count tokens in text."""
+        return len(self._tokenizer.encode(text))
+
+    def _estimate_available_context(self, config: GenerationConfig) -> int:
+        """Calculate how many tokens are available for input context.
+
+        Returns:
+            Number of tokens available for repo context in the prompt
+        """
+        return MODEL_CONTEXT_LIMIT - config.max_tokens - SYSTEM_PROMPT_BUDGET - SAFETY_MARGIN
 
     async def generate(
         self,
@@ -69,6 +101,9 @@ class DocGenerator:
         config: GenerationConfig | None = None,
     ) -> GeneratedDocs:
         """Generate documentation for a repository.
+
+        Automatically chooses single-shot or per-page generation based on
+        whether the full repo context fits within the model's context limit.
 
         Args:
             analysis: Repository analysis result
@@ -114,10 +149,64 @@ class DocGenerator:
                 file_paths=structure_plan.file_paths,
             )
 
-        # Step 3: Format repository for LLM
+        # Step 3: Decide single-shot vs per-page based on token math
         repo_context = format_for_llm(analysis, config.guidelines)
+        repo_tokens = self._count_tokens(repo_context)
+        available = self._estimate_available_context(config)
 
-        # Step 4: Build prompt (with audience and structure plan)
+        if repo_tokens <= available:
+            logfire.info(
+                "Using single-shot generation",
+                repo_tokens=repo_tokens,
+                available_tokens=available,
+            )
+            return await self._generate_single_shot(
+                analysis=analysis,
+                config=config,
+                repo_context=repo_context,
+                structure_plan=structure_plan,
+                structure_plan_context=structure_plan_context,
+                audience=audience,
+                audience_context=audience_context,
+            )
+        else:
+            logfire.info(
+                "Using per-page generation (repo too large for single-shot)",
+                repo_tokens=repo_tokens,
+                available_tokens=available,
+            )
+            if structure_plan is None:
+                # Per-page requires a structure plan
+                planner = DocPlanner(self.llm)
+                structure_plan = await planner.plan(
+                    analysis=analysis,
+                    guidelines=config.guidelines,
+                )
+                structure_plan_context = structure_plan.to_prompt_context()
+
+            return await self._generate_per_page(
+                analysis=analysis,
+                config=config,
+                structure_plan=structure_plan,
+                structure_plan_context=structure_plan_context,
+                audience=audience,
+                audience_context=audience_context,
+            )
+
+    async def _generate_single_shot(
+        self,
+        analysis: RepoAnalysis,
+        config: GenerationConfig,
+        repo_context: str,
+        structure_plan: DocStructurePlan | None,
+        structure_plan_context: str,
+        audience: AudienceInference,
+        audience_context: str,
+    ) -> GeneratedDocs:
+        """Generate all documentation in a single LLM call.
+
+        Used when the full repo context fits within the model's context limit.
+        """
         prompt = build_generation_prompt(
             repo_context=repo_context,
             guidelines=config.guidelines,
@@ -125,7 +214,6 @@ class DocGenerator:
             audience_context=audience_context,
         )
 
-        # Step 5: Generate documentation
         response = await self.llm.generate(
             prompt=prompt,
             system=get_system_prompt(),
@@ -133,11 +221,10 @@ class DocGenerator:
             temperature=config.temperature,
         )
 
-        # Step 6: Parse response
         files = self._parse_response(response.content, config.output_dir)
 
         logfire.info(
-            "Documentation generated",
+            "Documentation generated (single-shot)",
             repo=analysis.repository.full_name,
             files_generated=len(files),
             audience=audience.audience.value,
@@ -151,6 +238,141 @@ class DocGenerator:
             structure_plan=structure_plan,
             audience=audience,
         )
+
+    async def _generate_per_page(
+        self,
+        analysis: RepoAnalysis,
+        config: GenerationConfig,
+        structure_plan: DocStructurePlan,
+        structure_plan_context: str,
+        audience: AudienceInference,
+        audience_context: str,
+    ) -> GeneratedDocs:
+        """Generate documentation one page at a time.
+
+        Used when the full repo context exceeds the model's context limit.
+        Each page is generated with only its relevant source files.
+        """
+        all_files: dict[str, str] = {}
+        all_responses: list[LLMResponse] = []
+        generated_manifest: dict[str, str] = {}  # path -> title
+
+        # Use a deque so dynamically discovered pages can be appended
+        page_queue: deque[PlannedFile] = deque(sorted(structure_plan.files, key=lambda x: x.order))
+
+        # Fallback: highest-priority source files if source_files is empty
+        fallback_source_paths = [f.path for f in analysis.files[:10]]
+
+        while page_queue:
+            planned_file = page_queue.popleft()
+
+            # Select source files for this page
+            source_paths = planned_file.source_files or fallback_source_paths
+            repo_context = format_files_for_llm(analysis, source_paths, config.guidelines)
+
+            prompt = build_page_generation_prompt(
+                repo_context=repo_context,
+                planned_file=planned_file,
+                structure_plan=structure_plan_context,
+                audience_context=audience_context,
+                guidelines=config.guidelines,
+                generated_manifest=generated_manifest,
+            )
+
+            response = await self.llm.generate(
+                prompt=prompt,
+                system=get_system_prompt(),
+                max_tokens=config.max_tokens,
+                temperature=config.temperature,
+            )
+
+            all_responses.append(response)
+
+            # Parse the single page from response
+            page_files = self._parse_response(response.content, config.output_dir)
+            all_files.update(page_files)
+
+            # Track in manifest for cross-referencing
+            for path in page_files:
+                generated_manifest[path] = planned_file.title
+
+            # Check for SUGGEST_PAGE markers
+            suggested = self._parse_page_suggestions(response.content)
+            for suggested_file in suggested:
+                # Avoid duplicates
+                existing_paths = {f.path for f in structure_plan.files}
+                existing_paths.update(sf.path for sf in page_queue)
+                if suggested_file.path not in existing_paths:
+                    page_queue.append(suggested_file)
+                    structure_plan.files.append(suggested_file)
+                    logfire.info(
+                        "Discovered new page from LLM suggestion",
+                        path=suggested_file.path,
+                        title=suggested_file.title,
+                    )
+
+            logfire.info(
+                "Generated page",
+                path=planned_file.path,
+                title=planned_file.title,
+                files_remaining=len(page_queue),
+            )
+
+        # Use the first response as the primary (for backward compat)
+        primary_response = (
+            all_responses[0]
+            if all_responses
+            else LLMResponse(content="", model="unknown", input_tokens=0, output_tokens=0)
+        )
+
+        logfire.info(
+            "Documentation generated (per-page)",
+            repo=analysis.repository.full_name,
+            files_generated=len(all_files),
+            llm_calls=len(all_responses),
+            audience=audience.audience.value,
+        )
+
+        return GeneratedDocs(
+            files=all_files,
+            llm_response=primary_response,
+            structure_plan=structure_plan,
+            audience=audience,
+            llm_responses=all_responses,
+        )
+
+    def _parse_page_suggestions(self, content: str) -> list[PlannedFile]:
+        """Extract SUGGEST_PAGE markers from LLM output.
+
+        Format: <!-- SUGGEST_PAGE: path | title | description | source_file1, source_file2 -->
+
+        Args:
+            content: Raw LLM response content
+
+        Returns:
+            List of PlannedFile entries for suggested pages
+        """
+        pattern = r"<!--\s*SUGGEST_PAGE:\s*([^|]+)\|([^|]+)\|([^|]+)\|([^>]+?)-->"
+        suggestions = []
+
+        for match in re.finditer(pattern, content):
+            path = match.group(1).strip()
+            title = match.group(2).strip()
+            description = match.group(3).strip()
+            source_files_str = match.group(4).strip()
+            source_files = [s.strip() for s in source_files_str.split(",") if s.strip()]
+
+            suggestions.append(
+                PlannedFile(
+                    path=path,
+                    title=title,
+                    description=description,
+                    source_files=source_files,
+                    order=999,  # Append at end
+                )
+            )
+
+        return suggestions
 
     def _safe_path(self, path: str, output_dir: str) -> str | None:
         """Safely normalize a file path within the output directory.
@@ -251,6 +473,9 @@ class DocGenerator:
                 start = match.end()
                 end = markers[i + 1].start() if i + 1 < len(markers) else len(content)
                 doc_content = content[start:end].strip()
+
+                # Strip any SUGGEST_PAGE markers from the content
+                doc_content = re.sub(r"<!--\s*SUGGEST_PAGE:.*?-->", "", doc_content).strip()
 
                 # Safely normalize path
                 safe_path = self._safe_path(raw_path, output_dir)

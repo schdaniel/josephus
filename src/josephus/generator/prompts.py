@@ -1,6 +1,13 @@
 """Prompts for documentation generation."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from josephus.templates import render_template
+
+if TYPE_CHECKING:
+    from josephus.generator.planning import PlannedFile
 
 
 def get_system_prompt() -> str:
@@ -38,6 +45,38 @@ def build_generation_prompt(
         existing_docs=existing_docs,
         structure_plan=structure_plan,
         audience_context=audience_context,
+    )
+
+
+def build_page_generation_prompt(
+    repo_context: str,
+    planned_file: PlannedFile,
+    structure_plan: str = "",
+    audience_context: str = "",
+    guidelines: str = "",
+    generated_manifest: dict[str, str] | None = None,
+) -> str:
+    """Build the prompt for generating a single documentation page.
+
+    Args:
+        repo_context: XML-formatted repository context (subset of relevant files)
+        planned_file: The specific PlannedFile to generate
+        structure_plan: Full documentation structure plan context
+        audience_context: Inferred audience context
+        guidelines: User's documentation guidelines
+        generated_manifest: Dict of already-generated page paths to titles
+
+    Returns:
+        Formatted prompt string
+    """
+    return render_template(
+        "generation_page.xml.j2",
+        repo_context=repo_context,
+        planned_file=planned_file,
+        structure_plan=structure_plan,
+        audience_context=audience_context,
+        guidelines=guidelines,
+        generated_manifest=generated_manifest or {},
     )
 
 
