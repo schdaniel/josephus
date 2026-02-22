@@ -101,6 +101,27 @@ def generate(
         "--installation-id",
         help="GitHub App installation ID. Required for API.",
     ),
+    mode: str = typer.Option(
+        "code",
+        "--mode",
+        "-m",
+        help="Generation mode: 'code' for code-based docs, 'ui' for UI docs from deployment.",
+    ),
+    deployment_url: str | None = typer.Option(
+        None,
+        "--deployment-url",
+        help="Deployment URL to crawl for UI docs (requires --mode ui).",
+    ),
+    auth_cookie: list[str] | None = typer.Option(
+        None,
+        "--auth-cookie",
+        help="Auth cookie in 'name=value;domain=.example.com' format. Can be repeated.",
+    ),
+    auth_header: str | None = typer.Option(
+        None,
+        "--auth-header",
+        help="Bearer token for auth header injection.",
+    ),
 ) -> None:
     """Generate documentation for a repository.
 
@@ -113,6 +134,8 @@ def generate(
         josephus generate --repo owner/repo
 
         josephus generate --repo owner/repo --ref feature-branch --wait
+
+        josephus generate --mode ui --deployment-url https://app.example.com --auth-cookie "session=abc;domain=.example.com"
     """
     # Check authentication
     api_key = get_api_key()
@@ -156,6 +179,36 @@ def generate(
     # Use output dir from config if not provided
     if not output_dir:
         output_dir = project_config.output_directory
+
+    # UI mode validation
+    if mode == "ui":
+        if not deployment_url:
+            console.print("[red]Error:[/red] --deployment-url is required when using --mode ui.")
+            raise typer.Exit(1)
+
+        auth_info = ""
+        if auth_cookie:
+            auth_info += f"\nAuth cookies: {len(auth_cookie)} configured"
+        if auth_header:
+            auth_info += "\nAuth header: configured"
+
+        console.print(
+            Panel(
+                f"Mode: [blue]UI Documentation[/blue]\n"
+                f"Deployment: [blue]{deployment_url}[/blue]\n"
+                f"Repository: [blue]{repo}[/blue]{auth_info}",
+                title="UI Documentation Generation",
+                border_style="blue",
+            )
+        )
+        console.print(
+            "[yellow]Note:[/yellow] UI documentation generation requires a running deployment "
+            "and Playwright browser automation. This feature is in preview."
+        )
+        # TODO: Implement local UI doc generation pipeline
+        # For now, this would go through the API
+        console.print("[dim]UI mode will be available in a future release.[/dim]")
+        raise typer.Exit(0)
 
     # Create API client
     client = get_api_client(api_key)

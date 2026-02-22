@@ -1,0 +1,96 @@
+<prompt>
+<instruction>
+Plan the documentation structure for this web application based on the crawled screens,
+source code context, and extracted terminology. Each significant screen should get its
+own documentation article with screenshots and step-by-step guidance.
+</instruction>
+
+<site_inventory>
+<base_url>{{ base_url }}</base_url>
+<total_screens>{{ total_screens }}</total_screens>
+{% for screen in screens %}
+<screen url="{{ screen.url }}" title="{{ screen.title }}" depth="{{ screen.depth }}">
+<nav_path>{{ screen.nav_path }}</nav_path>
+{% if screen.headings %}
+<headings>
+{% for h in screen.headings %}
+<h{{ h.level }}>{{ h.text }}</h{{ h.level }}>
+{% endfor %}
+</headings>
+{% endif %}
+{% if screen.tabs %}
+<tabs count="{{ screen.tabs | length }}">
+{% for tab in screen.tabs %}
+<tab>{{ tab }}</tab>
+{% endfor %}
+</tabs>
+{% endif %}
+{% if screen.interactive_elements %}
+<interactive_elements>
+{% for el in screen.interactive_elements %}
+<element type="{{ el.type }}">{{ el.label }}</element>
+{% endfor %}
+</interactive_elements>
+{% endif %}
+{% if screen.form_fields %}
+<form_fields count="{{ screen.form_fields | length }}">
+{% for f in screen.form_fields %}
+<field type="{{ f.type }}" label="{{ f.label or f.name or 'unlabeled' }}" />
+{% endfor %}
+</form_fields>
+{% endif %}
+{% if screen.modals %}
+<modal_triggers>
+{% for m in screen.modals %}
+<trigger>{{ m }}</trigger>
+{% endfor %}
+</modal_triggers>
+{% endif %}
+</screen>
+{% endfor %}
+</site_inventory>
+
+{% if terminology %}
+<terminology>
+{{ terminology }}
+</terminology>
+{% endif %}
+
+{% if code_context %}
+<code_context>
+{{ code_context }}
+</code_context>
+{% endif %}
+
+{% if guidelines %}
+<user_guidelines>
+{{ guidelines }}
+</user_guidelines>
+{% endif %}
+
+<planning_rules>
+<rule>Every screen with distinct user-facing functionality gets its own article</rule>
+<rule>Screens with 3 or more tabs should have sub-articles for each tab</rule>
+<rule>Group related screens under a common parent in the documentation hierarchy</rule>
+<rule>Include an index page (docs/ui/index.md) as the entry point</rule>
+<rule>Use terminology from the glossary consistently in titles and descriptions</rule>
+<rule>Order articles to match the natural user workflow (overview first, then common tasks)</rule>
+<rule>File paths should be under docs/ui/ with descriptive kebab-case names</rule>
+</planning_rules>
+
+<output_format>
+Output a JSON object with:
+- "rationale": Why you chose this documentation structure
+- "files": Array of documentation files, each with:
+  - "path": File path (e.g., "docs/ui/dashboard.md")
+  - "title": Article title
+  - "description": What this article covers
+  - "screen_urls": Array of screen URLs documented in this article
+  - "order": Display order (integer, starting at 1)
+  - "sections": Array of sections with "heading", "description", "order"
+  - "sub_pages": Array of sub-page objects for complex screens, each with:
+    - "path": Sub-page file path
+    - "title": Sub-page title
+    - "tab_name": Name of the tab this sub-page documents
+</output_format>
+</prompt>

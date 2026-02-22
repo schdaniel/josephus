@@ -1,13 +1,49 @@
 """LLM provider abstraction for documentation generation."""
 
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
-from typing import Any
+from dataclasses import dataclass, field
+from typing import Any, Literal
 
 import anthropic
 import logfire
 
 from josephus.core.config import get_settings
+
+# --- Content block types (mirrors Anthropic API structure) ---
+
+
+@dataclass
+class TextBlock:
+    """A text content block."""
+
+    text: str
+    type: Literal["text"] = "text"
+
+
+@dataclass
+class ImageBlock:
+    """An image content block for multimodal prompts."""
+
+    data: str  # Base64-encoded image data
+    media_type: str  # e.g., "image/png", "image/jpeg"
+    detail: Literal["low", "high", "auto"] = "auto"
+    type: Literal["image"] = "image"
+
+
+ContentBlock = TextBlock | ImageBlock
+
+
+@dataclass
+class Message:
+    """A message with mixed content blocks."""
+
+    role: Literal["user", "assistant"]
+    content: list[ContentBlock] = field(default_factory=list)
+
+
+# --- Response ---
 
 
 @dataclass
@@ -21,6 +57,9 @@ class LLMResponse:
     stop_reason: str | None = None
 
 
+# --- Provider abstraction ---
+
+
 class LLMProvider(ABC):
     """Abstract base class for LLM providers."""
 
@@ -32,18 +71,33 @@ class LLMProvider(ABC):
         max_tokens: int = 4096,
         temperature: float = 0.7,
     ) -> LLMResponse:
-        """Generate a response from the LLM.
+        """Generate a response from a text prompt.
 
-        Args:
-            prompt: User prompt/message
-            system: System prompt
-            max_tokens: Maximum tokens to generate
-            temperature: Sampling temperature
-
-        Returns:
-            LLMResponse with generated content and metadata
+        This is the simple text-only interface. For multimodal prompts,
+        use generate_messages() instead.
         """
         pass
+
+    async def generate_messages(
+        self,
+        messages: list[Message],
+        system: str | None = None,
+        max_tokens: int = 4096,
+        temperature: float = 0.7,
+    ) -> LLMResponse:
+        """Generate a response from structured messages with mixed content.
+
+        Supports text and image content blocks. Default implementation
+        extracts text from messages and falls back to generate().
+        """
+        # Default fallback: extract text only
+        text_parts = []
+        for msg in messages:
+            for block in msg.content:
+                if isinstance(block, TextBlock):
+                    text_parts.append(block.text)
+        prompt = "\n".join(text_parts)
+        return await self.generate(prompt, system, max_tokens, temperature)
 
     @abstractmethod
     async def close(self) -> None:
@@ -55,7 +109,7 @@ class ClaudeProvider(LLMProvider):
     """Anthropic Claude provider.
 
     Uses Claude for documentation generation. Claude is recommended
-    for its strong code understanding and XML parsing capabilities.
+    for its strong code understanding and multimodal capabilities.
     """
 
     def __init__(
@@ -63,12 +117,6 @@ class ClaudeProvider(LLMProvider):
         api_key: str | None = None,
         model: str = "claude-sonnet-4-20250514",
     ) -> None:
-        """Initialize Claude provider.
-
-        Args:
-            api_key: Anthropic API key (defaults to env var)
-            model: Model to use (defaults to Claude 3.5 Sonnet)
-        """
         settings = get_settings()
         self.api_key = api_key or settings.anthropic_api_key
 
@@ -87,29 +135,33 @@ class ClaudeProvider(LLMProvider):
         max_tokens: int = 4096,
         temperature: float = 0.7,
     ) -> LLMResponse:
-        """Generate a response using Claude.
+        """Generate a response from a text prompt."""
+        messages = [Message(role="user", content=[TextBlock(text=prompt)])]
+        return await self.generate_messages(messages, system, max_tokens, temperature)
 
-        Args:
-            prompt: User prompt/message
-            system: System prompt
-            max_tokens: Maximum tokens to generate
-            temperature: Sampling temperature (0-1)
-
-        Returns:
-            LLMResponse with generated content and metadata
-        """
+    async def generate_messages(
+        self,
+        messages: list[Message],
+        system: str | None = None,
+        max_tokens: int = 4096,
+        temperature: float = 0.7,
+    ) -> LLMResponse:
+        """Generate a response from structured messages with mixed content."""
         logfire.info(
             "Calling Claude API",
             model=self.model,
             max_tokens=max_tokens,
-            prompt_preview=prompt[:100] + "..." if len(prompt) > 100 else prompt,
+            message_count=len(messages),
         )
+
+        # Convert Message objects to Anthropic API format
+        api_messages = [self._message_to_api(msg) for msg in messages]
 
         kwargs: dict[str, Any] = {
             "model": self.model,
             "max_tokens": max_tokens,
             "temperature": temperature,
-            "messages": [{"role": "user", "content": prompt}],
+            "messages": api_messages,
         }
 
         if system:
@@ -139,21 +191,34 @@ class ClaudeProvider(LLMProvider):
             stop_reason=response.stop_reason,
         )
 
+    def _message_to_api(self, message: Message) -> dict[str, Any]:
+        """Convert a Message to Anthropic API format."""
+        content_blocks: list[dict[str, Any]] = []
+
+        for block in message.content:
+            if isinstance(block, TextBlock):
+                content_blocks.append({"type": "text", "text": block.text})
+            elif isinstance(block, ImageBlock):
+                content_blocks.append(
+                    {
+                        "type": "image",
+                        "source": {
+                            "type": "base64",
+                            "media_type": block.media_type,
+                            "data": block.data,
+                        },
+                    }
+                )
+
+        return {"role": message.role, "content": content_blocks}
+
     async def close(self) -> None:
         """Close the Anthropic client."""
         await self._client.close()
 
 
 def get_provider(provider_name: str | None = None) -> LLMProvider:
-    """Get an LLM provider instance.
-
-    Args:
-        provider_name: Provider name (claude, openai, ollama)
-                      Defaults to config setting
-
-    Returns:
-        LLMProvider instance
-    """
+    """Get an LLM provider instance."""
     settings = get_settings()
     name = provider_name or settings.llm_provider
 

@@ -1,0 +1,104 @@
+<prompt>
+<instruction>
+Write UI documentation for the following screen. The screenshot is provided as an image above.
+Use the DOM data and source code context to understand the screen's functionality.
+</instruction>
+
+<screen_info>
+<url>{{ screen_url }}</url>
+<title>{{ screen_title }}</title>
+<nav_path>{{ nav_path }}</nav_path>
+<screenshot_ref>![{{ screen_title }}]({{ screenshot_ref }})</screenshot_ref>
+</screen_info>
+
+<dom_data>
+{% if headings %}
+<headings>
+{% for h in headings %}
+<h{{ h.level }}>{{ h.text }}</h{{ h.level }}>
+{% endfor %}
+</headings>
+{% endif %}
+
+{% if nav_links %}
+<navigation>
+{% for link in nav_links %}
+<link href="{{ link.href }}" {% if link.is_active %}active="true"{% endif %}>{{ link.text }}</link>
+{% endfor %}
+</navigation>
+{% endif %}
+
+{% if interactive_elements %}
+<interactive_elements>
+{% for el in interactive_elements %}
+<element type="{{ el.element_type }}" action="{{ el.action or '' }}">{{ el.label }}</element>
+{% endfor %}
+</interactive_elements>
+{% endif %}
+
+{% if form_fields %}
+<form>
+{% for f in form_fields %}
+<field type="{{ f.field_type }}" name="{{ f.name or '' }}" {% if f.required %}required="true"{% endif %} {% if f.placeholder %}placeholder="{{ f.placeholder }}"{% endif %}>{{ f.label or f.name or 'unlabeled' }}</field>
+{% endfor %}
+</form>
+{% endif %}
+
+{% if tabs %}
+<tabs>
+{% for tab in tabs %}
+<tab>{{ tab }}</tab>
+{% endfor %}
+</tabs>
+{% endif %}
+
+{% if modals %}
+<modal_triggers>
+{% for m in modals %}
+<trigger>{{ m }}</trigger>
+{% endfor %}
+</modal_triggers>
+{% endif %}
+
+{% if visible_text %}
+<visible_text>
+{{ visible_text[:3000] }}
+</visible_text>
+{% endif %}
+</dom_data>
+
+{% if terminology %}
+<terminology>
+{{ terminology }}
+</terminology>
+{% endif %}
+
+{% if source_code %}
+<source_code_context>
+{{ source_code }}
+</source_code_context>
+{% endif %}
+
+{% if plan_context %}
+<documentation_plan>
+{{ plan_context }}
+</documentation_plan>
+{% endif %}
+
+{% if guidelines %}
+<user_guidelines>
+{{ guidelines }}
+</user_guidelines>
+{% endif %}
+
+<output_instructions>
+Write the documentation as a single markdown file. Include:
+1. A level-1 heading with the screen title
+2. The screenshot reference immediately after the heading
+3. An "Overview" section describing what this screen is for
+4. Task-oriented sections for each major action available on this screen
+5. If the screen has tabs, document each tab's content
+6. If the screen has forms, document each field
+7. If the screen has modals, describe what triggers them and what they contain
+</output_instructions>
+</prompt>

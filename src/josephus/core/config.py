@@ -68,6 +68,15 @@ class Settings(BaseSettings):
     max_repo_size_mb: int = 100
     max_context_tokens: int = 100_000
 
+    # Crawler / UI Documentation
+    playwright_headless: bool = True
+    crawler_max_pages: int = 50
+    crawler_max_depth: int = 4
+    crawler_timeout_ms: int = 30000
+    screenshot_format: Literal["png", "jpeg", "webp"] = "png"
+    screenshot_quality: int = 85
+    screenshot_max_width: int = 1280
+
 
 @lru_cache
 def get_settings() -> Settings:

@@ -472,6 +472,38 @@ class GitHubClient:
     # High-Level Operations
     # ─────────────────────────────────────────────────────────────────
 
+    async def create_blob(
+        self,
+        installation_id: int,
+        owner: str,
+        repo: str,
+        content: str,
+        encoding: str = "utf-8",
+    ) -> dict[str, Any]:
+        """Create a git blob.
+
+        Args:
+            installation_id: GitHub App installation ID
+            owner: Repository owner
+            repo: Repository name
+            content: Blob content (text or base64-encoded binary)
+            encoding: Content encoding ("utf-8" or "base64")
+
+        Returns:
+            Created blob object with SHA
+        """
+        response = await self._request(
+            "POST",
+            f"/repos/{owner}/{repo}/git/blobs",
+            installation_id,
+            json={
+                "content": content,
+                "encoding": encoding,
+            },
+        )
+        response.raise_for_status()
+        return response.json()
+
     async def commit_files(
         self,
         installation_id: int,
@@ -481,23 +513,37 @@ class GitHubClient:
         files: dict[str, str],
         message: str,
         base_branch: str | None = None,
+        binary_files: dict[str, bytes] | None = None,
     ) -> dict[str, Any]:
         """Commit multiple files in a single commit.
 
         Creates a new branch if it doesn't exist, then commits all files.
+        Supports both text files and binary files (e.g., screenshots).
 
         Args:
             installation_id: GitHub App installation ID
             owner: Repository owner
             repo: Repository name
             branch: Target branch name
-            files: Dict of path -> content
+            files: Dict of path -> text content
             message: Commit message
             base_branch: Branch to base from (if creating new branch)
+            binary_files: Dict of path -> binary content (e.g., screenshots)
 
         Returns:
             Created commit object
         """
+        binary_files = binary_files or {}
+
+        # Warn if total binary size exceeds 10MB
+        total_binary_size = sum(len(data) for data in binary_files.values())
+        if total_binary_size > 10 * 1024 * 1024:
+            logfire.warn(
+                "Binary files exceed 10MB total — consider using Git LFS",
+                total_size_mb=total_binary_size / (1024 * 1024),
+                binary_file_count=len(binary_files),
+            )
+
         # Get base branch ref
         repo_info = await self.get_repository(installation_id, owner, repo)
         base = base_branch or repo_info.default_branch
@@ -517,7 +563,7 @@ class GitHubClient:
         # Get current tree
         current_tree = await self.get_tree(installation_id, owner, repo, base_sha, recursive=False)
 
-        # Build tree entries for new/updated files
+        # Build tree entries for text files
         tree_entries = []
         for path, content in files.items():
             tree_entries.append(
@@ -526,6 +572,19 @@ class GitHubClient:
                     "mode": "100644",  # Regular file
                     "type": "blob",
                     "content": content,
+                }
+            )
+
+        # Create blobs for binary files and add to tree
+        for path, data in binary_files.items():
+            encoded = base64.b64encode(data).decode("ascii")
+            blob = await self.create_blob(installation_id, owner, repo, encoded, encoding="base64")
+            tree_entries.append(
+                {
+                    "path": path,
+                    "mode": "100644",
+                    "type": "blob",
+                    "sha": blob["sha"],
                 }
             )
 
@@ -553,11 +612,14 @@ class GitHubClient:
             commit["sha"],
         )
 
+        all_paths = list(files.keys()) + list(binary_files.keys())
         logfire.info(
             "Committed files",
             repo=f"{owner}/{repo}",
             branch=branch,
-            files=list(files.keys()),
+            files=all_paths,
+            text_files=len(files),
+            binary_files=len(binary_files),
             commit_sha=commit["sha"],
         )
 

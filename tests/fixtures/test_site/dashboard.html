@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Test App - Dashboard</title></head>
+<body>
+<header role="banner">
+    <nav role="navigation">
+        <a href="/">Home</a>
+        <a href="/dashboard.html" class="active" aria-current="page">Dashboard</a>
+        <a href="/settings.html">Settings</a>
+    </nav>
+</header>
+<main role="main">
+    <h1>Dashboard</h1>
+    <div role="tablist">
+        <button role="tab" aria-selected="true" id="tab-overview">Overview</button>
+        <button role="tab" aria-selected="false" id="tab-analytics">Analytics</button>
+        <button role="tab" aria-selected="false" id="tab-reports">Reports</button>
+    </div>
+    <div role="tabpanel">
+        <h2>Overview</h2>
+        <p>Welcome to your dashboard. Here you can see an overview of your activity.</p>
+        <div>
+            <h3>Recent Activity</h3>
+            <p>No recent activity.</p>
+        </div>
+    </div>
+    <button data-bs-toggle="modal">Export Data</button>
+    <select id="time-range" aria-label="Time Range">
+        <option>Last 7 days</option>
+        <option>Last 30 days</option>
+        <option>Last 90 days</option>
+    </select>
+</main>
+</body>
+</html>

@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 from josephus.core.config import get_settings
 from josephus.core.service import JosephusService
+from josephus.core.ui_service import UIDocService
 from josephus.db.models import Job, JobStatus, Repository
 from josephus.security import sanitize_error_message
 from josephus.worker.celery_app import celery_app
@@ -269,6 +270,189 @@ async def _analyze_pull_request_async(
             )
 
             # Update job with sanitized error message (no sensitive info)
+            if job:
+                job.status = JobStatus.FAILED
+                job.completed_at = datetime.utcnow()
+                job.error_message = sanitize_error_message(e)
+                await session.commit()
+
+            raise task.retry(exc=e, countdown=60) from None
+
+
+@celery_app.task(bind=True, base=AsyncTask, max_retries=3)
+def generate_ui_documentation(
+    self: AsyncTask,
+    job_id: str,
+    installation_id: int,
+    owner: str,
+    repo: str,
+    deployment_url: str,
+    auth_cookies: list[dict[str, str]] | None = None,
+    bearer_token: str | None = None,
+    guidelines: str = "",
+    output_dir: str = "docs/ui",
+) -> dict[str, Any]:
+    """Generate UI documentation by crawling a deployment.
+
+    Args:
+        job_id: Job ID for tracking
+        installation_id: GitHub App installation ID
+        owner: Repository owner
+        repo: Repository name
+        deployment_url: URL of the deployment to crawl
+        auth_cookies: List of cookie dicts with name, value, domain
+        bearer_token: Bearer token for auth
+        guidelines: Documentation guidelines
+        output_dir: Output directory for docs
+
+    Returns:
+        Dict with job result information
+    """
+    return run_async(
+        _generate_ui_documentation_async(
+            self,
+            job_id=job_id,
+            installation_id=installation_id,
+            owner=owner,
+            repo=repo,
+            deployment_url=deployment_url,
+            auth_cookies=auth_cookies,
+            bearer_token=bearer_token,
+            guidelines=guidelines,
+            output_dir=output_dir,
+        )
+    )
+
+
+async def _generate_ui_documentation_async(
+    task: AsyncTask,
+    job_id: str,
+    installation_id: int,
+    owner: str,
+    repo: str,
+    deployment_url: str,
+    auth_cookies: list[dict[str, str]] | None = None,
+    bearer_token: str | None = None,
+    guidelines: str = "",
+    output_dir: str = "docs/ui",
+) -> dict[str, Any]:
+    """Async implementation of UI documentation generation."""
+    from josephus.crawler.models import AuthConfig, AuthStrategy, CookieConfig, CrawlConfig
+
+    logfire.info(
+        "Starting UI documentation generation task",
+        job_id=job_id,
+        repo=f"{owner}/{repo}",
+        deployment_url=deployment_url,
+        output_dir=output_dir,
+    )
+
+    async with task.session_factory() as session:
+        job = await session.get(Job, job_id)
+        if job:
+            job.status = JobStatus.RUNNING
+            job.started_at = datetime.utcnow()
+            await session.commit()
+
+        try:
+            # Build auth config
+            auth = AuthConfig()
+            if auth_cookies:
+                auth.strategy = AuthStrategy.COOKIES
+                auth.cookies = [
+                    CookieConfig(
+                        name=c["name"],
+                        value=c["value"],
+                        domain=c.get("domain", ""),
+                    )
+                    for c in auth_cookies
+                ]
+            elif bearer_token:
+                auth.strategy = AuthStrategy.TOKEN_HEADER
+                auth.bearer_token = bearer_token
+
+            # Build crawl config
+            settings = get_settings()
+            crawl_config = CrawlConfig(
+                base_url=deployment_url,
+                auth=auth,
+                max_pages=settings.crawler_max_pages,
+                max_depth=settings.crawler_max_depth,
+                navigation_timeout_ms=settings.crawler_timeout_ms,
+            )
+
+            # Run UI doc generation
+            service = UIDocService()
+            github = None
+            try:
+                result = await service.generate(
+                    crawl_config=crawl_config,
+                    guidelines=guidelines,
+                )
+
+                # Commit docs + screenshots to GitHub
+                from josephus.github import GitHubClient
+
+                github = GitHubClient()
+                branch = f"josephus/ui-docs-{datetime.utcnow().strftime('%Y%m%d-%H%M%S')}"
+
+                await github.commit_files(
+                    installation_id=installation_id,
+                    owner=owner,
+                    repo=repo,
+                    branch=branch,
+                    files=result.generated_docs.files,
+                    binary_files=result.generated_docs.screenshots,
+                    message=f"docs: generate UI documentation with Josephus\n\n"
+                    f"Crawled {result.pages_crawled} screens from {deployment_url}.\n"
+                    f"Generated {len(result.generated_docs.files)} documentation files.",
+                )
+
+                # Create PR
+                pr = await github.create_pull_request(
+                    installation_id=installation_id,
+                    owner=owner,
+                    repo=repo,
+                    title="docs: Add UI documentation with screenshots",
+                    body=f"## UI Documentation\n\n"
+                    f"Generated from deployment: {deployment_url}\n\n"
+                    f"- **Screens crawled:** {result.pages_crawled}\n"
+                    f"- **Documentation files:** {len(result.generated_docs.files)}\n"
+                    f"- **Screenshots:** {len(result.generated_docs.screenshots)}\n\n"
+                    f"---\n*Generated by Josephus*",
+                    head=branch,
+                    base="main",
+                )
+
+                # Update job
+                if job:
+                    job.status = JobStatus.COMPLETED
+                    job.completed_at = datetime.utcnow()
+                    job.result_pr_url = pr["html_url"]
+                    await session.commit()
+
+                return {
+                    "status": "completed",
+                    "job_id": job_id,
+                    "pr_url": pr["html_url"],
+                    "pr_number": pr["number"],
+                    "pages_crawled": result.pages_crawled,
+                    "docs_generated": len(result.generated_docs.files),
+                    "screenshots": len(result.generated_docs.screenshots),
+                }
+            finally:
+                await service.close()
+                if github:
+                    await github.close()
+
+        except Exception as e:
+            logfire.error(
+                "UI documentation generation failed",
+                job_id=job_id,
+                error=str(e),
+                exc_info=True,
+            )
+
             if job:
                 job.status = JobStatus.FAILED
                 job.completed_at = datetime.utcnow()
