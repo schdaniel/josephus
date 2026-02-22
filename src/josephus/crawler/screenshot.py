@@ -16,8 +16,10 @@ from josephus.crawler.models import ScreenshotConfig, ScreenshotFormat
 class ScreenshotManager:
     """Manages screenshot capture, storage, and encoding."""
 
-    def __init__(self, config: ScreenshotConfig, output_dir: Path | None = None) -> None:
-        self._config = config
+    def __init__(
+        self, config: ScreenshotConfig | None = None, output_dir: Path | None = None
+    ) -> None:
+        self._config = config or ScreenshotConfig()
         self._output_dir = output_dir
         if output_dir:
             output_dir.mkdir(parents=True, exist_ok=True)

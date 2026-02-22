@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 
 import logfire
 
-from josephus.crawler.models import CrawledPage, SiteInventory
+from josephus.crawler.models import CrawledPage, PageType, SiteInventory
 from josephus.generator.planning import DocStructurePlan, PlannedFile, PlannedSection
 from josephus.llm.provider import ImageBlock, LLMProvider, Message, TextBlock
 from josephus.templates import render_template
@@ -283,7 +283,7 @@ class UIDocPlanner:
         Returns:
             UITerminology glossary
         """
-        content_pages = [p for p in inventory.pages if p.page_type == "content"]
+        content_pages = [p for p in inventory.pages if p.page_type == PageType.CONTENT]
         pages_to_use = content_pages[: self.MAX_TERMINOLOGY_SCREENS]
 
         logfire.info(
@@ -365,7 +365,7 @@ class UIDocPlanner:
         )
 
         # Step 2: Build screen summaries
-        content_pages = [p for p in inventory.pages if p.page_type == "content"]
+        content_pages = [p for p in inventory.pages if p.page_type == PageType.CONTENT]
         screen_summaries = [_build_screen_summary(p) for p in content_pages]
 
         # Step 3: Build planning prompt with terminology context
@@ -439,7 +439,7 @@ def _default_ui_plan(inventory: SiteInventory) -> DocStructurePlan:
         ),
     ]
 
-    content_pages = [p for p in inventory.pages if p.page_type == "content"]
+    content_pages = [p for p in inventory.pages if p.page_type == PageType.CONTENT]
     for i, page in enumerate(content_pages):
         # Generate a reasonable filename from the URL path
         path_parts = page.url.rstrip("/").split("/")

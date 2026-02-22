@@ -122,6 +122,14 @@ async def trigger_documentation_generation(
     }
 
 
+class CookieInput(BaseModel):
+    """A single auth cookie."""
+
+    name: str = Field(..., description="Cookie name")
+    value: str = Field(..., description="Cookie value")
+    domain: str = Field("", description="Cookie domain (e.g., .example.com)")
+
+
 class GenerateUIRequest(BaseModel):
     """Request body for UI documentation generation."""
 
@@ -129,8 +137,8 @@ class GenerateUIRequest(BaseModel):
     owner: str = Field(..., description="Repository owner")
     repo: str = Field(..., description="Repository name")
     deployment_url: str = Field(..., description="Deployment URL to crawl")
-    auth_cookies: list[dict[str, str]] | None = Field(
-        None, description="Auth cookies: [{name, value, domain}]"
+    auth_cookies: list[CookieInput] | None = Field(
+        None, description="Auth cookies for the deployment"
     )
     bearer_token: str | None = Field(None, description="Bearer token for auth")
     guidelines: str = Field("", description="Documentation guidelines")
@@ -187,7 +195,9 @@ async def trigger_ui_documentation_generation(
             "owner": body.owner,
             "repo": body.repo,
             "deployment_url": body.deployment_url,
-            "auth_cookies": body.auth_cookies,
+            "auth_cookies": [c.model_dump() for c in body.auth_cookies]
+            if body.auth_cookies
+            else None,
             "bearer_token": body.bearer_token,
             "guidelines": body.guidelines,
             "output_dir": body.output_dir,
