@@ -1,0 +1,56 @@
+<prompt>
+<instruction>
+Analyze the following screenshots and DOM data from a web application.
+Extract a glossary of UI terminology — the specific names, labels, and concepts
+used in this application's interface. This glossary will be used to ensure consistent
+terminology across all generated documentation.
+</instruction>
+
+<screens>
+{% for screen in screens %}
+<screen url="{{ screen.url }}" title="{{ screen.title }}">
+<dom_summary>
+{% if screen.headings %}
+<headings>
+{% for h in screen.headings %}
+<h{{ h.level }}>{{ h.text }}</h{{ h.level }}>
+{% endfor %}
+</headings>
+{% endif %}
+{% if screen.nav_links %}
+<navigation>
+{% for link in screen.nav_links %}
+<link href="{{ link.href }}">{{ link.text }}</link>
+{% endfor %}
+</navigation>
+{% endif %}
+{% if screen.buttons %}
+<buttons>
+{% for btn in screen.buttons %}
+<button>{{ btn }}</button>
+{% endfor %}
+</buttons>
+{% endif %}
+{% if screen.tabs %}
+<tabs>
+{% for tab in screen.tabs %}
+<tab>{{ tab }}</tab>
+{% endfor %}
+</tabs>
+{% endif %}
+</dom_summary>
+</screen>
+{% endfor %}
+</screens>
+
+<output_format>
+Output a JSON object with:
+- "terms": Array of term objects, each with:
+  - "term": The UI term as it appears in the application (e.g., "Dashboard", "Workspace")
+  - "definition": Brief description of what this term means in the context of this app
+  - "category": One of "navigation", "action", "concept", "data", "status"
+  - "synonyms": Array of alternative terms seen for the same concept (if any)
+- "app_name": The application name if detected from the UI
+- "primary_navigation": Array of top-level navigation items in order
+</output_format>
+</prompt>

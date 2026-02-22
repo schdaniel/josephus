@@ -122,6 +122,91 @@ async def trigger_documentation_generation(
     }
 
 
+class GenerateUIRequest(BaseModel):
+    """Request body for UI documentation generation."""
+
+    installation_id: int = Field(..., description="GitHub App installation ID")
+    owner: str = Field(..., description="Repository owner")
+    repo: str = Field(..., description="Repository name")
+    deployment_url: str = Field(..., description="Deployment URL to crawl")
+    auth_cookies: list[dict[str, str]] | None = Field(
+        None, description="Auth cookies: [{name, value, domain}]"
+    )
+    bearer_token: str | None = Field(None, description="Bearer token for auth")
+    guidelines: str = Field("", description="Documentation guidelines")
+    output_dir: str = Field("docs/ui", description="Output directory for generated docs")
+
+
+@router.post("/generate-ui", response_model=GenerateResponse)
+@limiter.limit(RATE_LIMITS["generate"])
+async def trigger_ui_documentation_generation(
+    request: Request,  # noqa: ARG001 - Required by slowapi for rate limiting
+    body: GenerateUIRequest,
+    session: AsyncSession = Depends(get_session),
+    _authenticated: bool = Depends(verify_api_key),
+) -> dict[str, Any]:
+    """Trigger UI documentation generation by crawling a deployment.
+
+    This endpoint queues a background job to:
+    1. Crawl the deployment URL with Playwright
+    2. Extract screenshots and DOM data
+    3. Generate UI documentation with LLM
+    4. Create a PR with docs and screenshots
+
+    Returns immediately with a job ID for status polling.
+    """
+    logfire.info(
+        "UI documentation generation requested",
+        installation_id=body.installation_id,
+        repo=f"{body.owner}/{body.repo}",
+        deployment_url=body.deployment_url,
+    )
+
+    full_name = f"{body.owner}/{body.repo}"
+    repo = await get_or_create_repository(
+        session=session,
+        installation_id=body.installation_id,
+        owner=body.owner,
+        name=body.repo,
+        full_name=full_name,
+        default_branch="main",
+    )
+
+    job = await create_job(
+        session=session,
+        repository_id=repo.id,
+        ref="main",
+        trigger="manual_ui",
+    )
+
+    celery_app.send_task(
+        "josephus.worker.tasks.generate_ui_documentation",
+        kwargs={
+            "job_id": job.id,
+            "installation_id": body.installation_id,
+            "owner": body.owner,
+            "repo": body.repo,
+            "deployment_url": body.deployment_url,
+            "auth_cookies": body.auth_cookies,
+            "bearer_token": body.bearer_token,
+            "guidelines": body.guidelines,
+            "output_dir": body.output_dir,
+        },
+    )
+
+    logfire.info(
+        "UI documentation generation job queued",
+        job_id=job.id,
+        repo=full_name,
+    )
+
+    return {
+        "job_id": job.id,
+        "status": "queued",
+        "message": f"UI documentation generation queued for {full_name}",
+    }
+
+
 @router.get("/jobs/{job_id}", response_model=JobStatusResponse)
 @limiter.limit(RATE_LIMITS["job_status"])
 async def get_job_status(
